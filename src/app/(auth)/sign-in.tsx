@@ -1,4 +1,5 @@
 import { signInUser } from "@/api/auth/sign-in";
+import { useAuth } from "@/auth/AuthContext";
 import { Button } from "@/components/common/Button";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
@@ -32,6 +33,7 @@ export default function SignInScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
   const scrollViewRef = useRef<ScrollView>(null);
+  const { saveSession } = useAuth();
 
   const trimmedEmail = email.trim();
   const emailIsValid = emailRegex.test(trimmedEmail);
@@ -68,12 +70,11 @@ export default function SignInScreen() {
         password,
       });
 
-      router.replace({
-        pathname: "/dashboard",
-        params: {
-          firstName: result.user.firstName,
-        },
+      await saveSession({
+        token: result.session.token,
+        user: result.user,
       });
+      router.replace("/dashboard");
     } catch (error) {
       if (error instanceof Error) {
         setSubmitMessage(error.message);

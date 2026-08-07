@@ -1,17 +1,16 @@
+import { useAuth } from "@/auth/AuthContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
-import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView, StyleSheet, Text, View } from "react-native";
 
 export default function DashboardScreen() {
-  const { firstName } = useLocalSearchParams<{ firstName?: string }>();
-  const displayName = firstName || "there";
+  const { user } = useAuth();
 
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.content}>
         <Text style={styles.eyebrow}>Dashboard</Text>
-        <Text style={styles.title}>Welcome, {displayName}.</Text>
+        <Text style={styles.title}>Welcome, {user?.firstName}.</Text>
         <Text style={styles.description}>
           This is where appointments, providers, reminders, and care notes will
           come together.

@@ -21,11 +21,14 @@ export type SignedInUser = {
 type SignInResponse = {
   message: string;
   user: SignedInUser;
+  session: {
+    token: string;
+    expiresAt: string;
+  };
 };
 
 export async function signInUser(input: SignInRequest) {
-  // The web API currently sets an HTTP-only cookie. Mobile can test sign-in with
-  // this response, but protected mobile calls should eventually use token auth.
+  // Mobile uses the returned session token. Web still uses the HTTP-only cookie.
   const response = await fetch("https://www.mydocday.com/api/auth/sign-in", {
     method: "POST",
     headers: {
