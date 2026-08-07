@@ -20,7 +20,9 @@ export function ProviderWidget({ provider, onDelete }: ProviderWidgetProps) {
       : `${provider.firstName?.charAt(0) ?? ""}${provider.lastName?.charAt(0) ?? ""}`.toUpperCase();
   const widgetLabel = provider.type === "clinic" ? "Clinic" : "Provider";
   const location = [provider.city, provider.state].filter(Boolean).join(", ");
-  const hasDetails = Boolean(location || provider.zipCode || provider.phoneNumber);
+  const hasDetails = Boolean(
+    location || provider.zipCode || provider.phoneNumber,
+  );
 
   return (
     <View style={styles.card}>
@@ -70,7 +72,9 @@ export function ProviderWidget({ provider, onDelete }: ProviderWidgetProps) {
           ) : null}
 
           {provider.phoneNumber ? (
-            <View style={location || provider.zipCode ? styles.phoneGroup : null}>
+            <View
+              style={location || provider.zipCode ? styles.phoneGroup : null}
+            >
               <Text style={styles.detailLabel}>Phone</Text>
               <Text style={styles.detailText}>{provider.phoneNumber}</Text>
             </View>
@@ -84,17 +88,10 @@ export function ProviderWidget({ provider, onDelete }: ProviderWidgetProps) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#f8fafc",
-    borderColor: "rgba(31, 53, 87, 0.4)",
+    borderColor: "rgba(31, 53, 87, 0.08)",
     borderRadius: 8,
     borderWidth: 1,
-    padding: 20,
-    shadowColor: colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 12,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 28,
+    padding: 16,
   },
   header: {
     alignItems: "flex-start",
