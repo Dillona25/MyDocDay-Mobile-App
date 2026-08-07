@@ -5,6 +5,7 @@ import { ProviderWidget } from "@/components/providers/provider-widget";
 import { useProviders } from "@/hooks/useProviders";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
+import { router } from "expo-router";
 import {
   Pressable,
   SafeAreaView,
@@ -33,6 +34,13 @@ export default function DashboardScreen() {
           <View style={styles.dashboardCard}>
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>Providers</Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push("/providers")}
+                style={styles.addButton}
+              >
+                <Text style={styles.addButtonText}>+</Text>
+              </Pressable>
             </View>
 
             <View style={styles.providerList}>
@@ -50,7 +58,10 @@ export default function DashboardScreen() {
             </View>
 
             {hasMoreProviders ? (
-              <Pressable style={styles.footerButton}>
+              <Pressable
+                onPress={() => router.push("/providers")}
+                style={styles.footerButton}
+              >
                 <Text style={styles.footerButtonText}>View all providers</Text>
               </Pressable>
             ) : null}
@@ -113,6 +124,21 @@ const styles = StyleSheet.create({
     fontFamily: fonts.heading,
     fontSize: 20,
     fontWeight: fontWeights.semibold,
+  },
+  addButton: {
+    alignItems: "center",
+    backgroundColor: "rgba(28, 184, 178, 0.14)",
+    borderRadius: 8,
+    height: 32,
+    justifyContent: "center",
+    width: 32,
+  },
+  addButtonText: {
+    color: colors.secondary,
+    fontFamily: fonts.body,
+    fontSize: 22,
+    fontWeight: fontWeights.bold,
+    lineHeight: 24,
   },
   providerList: {
     gap: 12,

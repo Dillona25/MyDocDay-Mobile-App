@@ -1,6 +1,7 @@
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import { Image } from "expo-image";
+import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -70,6 +71,13 @@ export function AppointmentWidget() {
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <Text style={styles.cardTitle}>Appointments</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push("/add-appointment")}
+          style={styles.addButton}
+        >
+          <Text style={styles.addButtonText}>+</Text>
+        </Pressable>
       </View>
 
       <Text style={styles.monthYearLabel}>{monthYearLabel}</Text>
@@ -122,7 +130,10 @@ export function AppointmentWidget() {
         </Text>
       </View>
 
-      <Pressable style={styles.footerButton}>
+      <Pressable
+        onPress={() => router.push("/appointments")}
+        style={styles.footerButton}
+      >
         <Text style={styles.footerButtonText}>View all appointments</Text>
       </Pressable>
     </View>
@@ -156,6 +167,21 @@ const styles = StyleSheet.create({
     fontFamily: fonts.heading,
     fontSize: 20,
     fontWeight: fontWeights.semibold,
+  },
+  addButton: {
+    alignItems: "center",
+    backgroundColor: "rgba(28, 184, 178, 0.14)",
+    borderRadius: 8,
+    height: 32,
+    justifyContent: "center",
+    width: 32,
+  },
+  addButtonText: {
+    color: colors.secondary,
+    fontFamily: fonts.body,
+    fontSize: 22,
+    fontWeight: fontWeights.bold,
+    lineHeight: 24,
   },
   monthYearLabel: {
     color: "#536173",
