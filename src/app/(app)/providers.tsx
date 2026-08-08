@@ -61,13 +61,19 @@ export default function ProvidersScreen() {
         </View>
 
         {isLoading ? (
-          <Text style={styles.helperText}>Loading providers...</Text>
+          <Text style={styles.helperHeader}>Loading providers...</Text>
         ) : null}
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <View style={styles.providerList}>
           {!isLoading && !error && filteredProviders.length === 0 ? (
-            <Text style={styles.helperText}>No providers found.</Text>
+            <View>
+              <Text style={styles.helperHeader}>No {activeFilter}s found.</Text>
+              <Text style={styles.emptyText}>
+                Add your first {activeFilter} and they will appear in this
+                filter.
+              </Text>
+            </View>
           ) : null}
           {filteredProviders.map((provider) => (
             <ProviderWidget
@@ -145,10 +151,21 @@ const styles = StyleSheet.create({
   providerList: {
     gap: 12,
   },
-  helperText: {
+  helperHeader: {
+    color: colors.primary,
+    fontFamily: fonts.heading,
+    fontSize: 18,
+    fontWeight: fontWeights.semibold,
+    marginTop: 10,
+    textAlign: "center",
+  },
+  emptyText: {
     color: "#536173",
     fontFamily: fonts.body,
     fontSize: 14,
+    lineHeight: 20,
+    marginTop: 6,
+    textAlign: "center",
   },
   errorText: {
     color: "#d24747",

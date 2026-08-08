@@ -86,13 +86,6 @@ export function AppointmentWidget() {
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <Text style={styles.cardTitle}>Appointments</Text>
-        <HapticButton
-          accessibilityRole="button"
-          onPress={() => router.push("/add-appointment")}
-          style={styles.addButton}
-        >
-          <Text style={styles.addButtonText}>+</Text>
-        </HapticButton>
       </View>
 
       <Text style={styles.monthYearLabel}>{monthYearLabel}</Text>

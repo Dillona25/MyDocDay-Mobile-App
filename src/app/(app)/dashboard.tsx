@@ -28,13 +28,6 @@ export default function DashboardScreen() {
           <View style={styles.dashboardCard}>
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>Providers</Text>
-              <HapticButton
-                accessibilityRole="button"
-                onPress={() => router.push("/providers")}
-                style={styles.addButton}
-              >
-                <Text style={styles.addButtonText}>+</Text>
-              </HapticButton>
             </View>
 
             {providers.length > 0 ? (
