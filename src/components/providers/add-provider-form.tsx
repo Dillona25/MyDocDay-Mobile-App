@@ -1,3 +1,6 @@
+import { createProvider } from "@/api/providers/providers";
+import { ToastType } from "@/app/(app)/addition";
+import { useAuth } from "@/auth/AuthContext";
 import { providerTypes } from "@/data/providerTypes";
 import {
   field,
@@ -13,6 +16,7 @@ import {
   textInput,
 } from "@/theme/forms";
 import type { ProviderFormData } from "@/types/provider-form";
+import * as Haptics from "expo-haptics";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
@@ -23,6 +27,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { HapticButton } from "../common/HapticButton";
 
 const initialProviderFormData: ProviderFormData = {
   firstName: "",
@@ -38,9 +43,14 @@ const initialProviderFormData: ProviderFormData = {
   zipCode: "",
 };
 
-export default function AddProviderForm() {
+type AddProviderFormProps = {
+  onSuccess: (message: string, type: ToastType) => void;
+};
+
+export default function AddProviderForm({ onSuccess }: AddProviderFormProps) {
   const [formData, setFormData] = useState(initialProviderFormData);
   const providerType = formData.type;
+  const { token } = useAuth();
 
   useFocusEffect(
     useCallback(() => {
@@ -55,6 +65,48 @@ export default function AddProviderForm() {
       ...currentFormData,
       [fieldName]: value,
     }));
+  }
+
+  async function onSubmitPress(formData: ProviderFormData) {
+    console.log("formData:", formData);
+
+    if (!token) {
+      return;
+    }
+
+    try {
+      const data = await createProvider(
+        {
+          ...formData,
+          type: formData.type || "provider",
+          firstName: formData.type === "provider" ? formData.firstName : "",
+          lastName: formData.type === "provider" ? formData.lastName : "",
+          clinicName: formData.type === "clinic" ? formData.clinicName : "",
+        },
+        token,
+      );
+
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      onSuccess("Provider added successfully", "success");
+
+      // Clears our form..
+      setFormData({
+        type: "",
+        firstName: "",
+        lastName: "",
+        clinicName: "",
+        specialty: "",
+        phoneNumber: "",
+        imageUrl: "",
+        streetAddress: "",
+        city: "",
+        state: "",
+        zipCode: "",
+      });
+    } catch (error) {
+      console.log(error);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
   }
 
   return (
@@ -171,9 +223,12 @@ export default function AddProviderForm() {
             </>
           ) : null}
 
-          <Pressable style={submitButton}>
+          <HapticButton
+            style={submitButton}
+            onPress={() => onSubmitPress(formData)}
+          >
             <Text style={submitButtonText}>Add Provider</Text>
-          </Pressable>
+          </HapticButton>
         </>
       ) : null}
     </ScrollView>

@@ -1,4 +1,8 @@
-import type { GetProvidersResponse } from "@/types/provider";
+import type {
+  CreateProviderInput,
+  GetProvidersResponse,
+  Provider,
+} from "@/types/provider";
 
 export async function getUserProviders(
   token: string,
@@ -14,6 +18,34 @@ export async function getUserProviders(
 
   if (!response.ok) {
     throw new Error(data.message ?? "Unable to load providers");
+  }
+
+  return data;
+}
+
+type CreateProviderRequest = Omit<CreateProviderInput, "userId">;
+type CreateProviderResponse = {
+  message: string;
+  provider: Provider;
+};
+
+export async function createProvider(
+  providerData: CreateProviderRequest,
+  token: string,
+): Promise<CreateProviderResponse> {
+  const response = await fetch("https://www.mydocday.com/api/providers", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(providerData),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message ?? "Unable to create provider");
   }
 
   return data;

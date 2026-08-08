@@ -7,7 +7,7 @@ export type Provider = {
   lastName: string | null;
   clinicName: string | null;
   specialty: string;
-  type: ProviderType;
+  type: ProviderType | "";
   phoneNumber: string | null;
   imageUrl: string | null;
   streetAddress: string | null;
@@ -21,4 +21,19 @@ export type Provider = {
 export type GetProvidersResponse = {
   message: string;
   providers: Provider[];
+};
+
+export type CreateProviderInput = {
+  userId: number;
+  firstName?: string;
+  lastName?: string;
+  clinicName?: string;
+  specialty: string;
+  type: ProviderType;
+  phoneNumber?: string;
+  imageUrl?: string;
+  streetAddress?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
 };
