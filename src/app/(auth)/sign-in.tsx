@@ -3,6 +3,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { Button } from "@/components/common/Button";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
+import { fieldStack, label, textInput } from "@/theme/forms";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useRef, useState } from "react";
@@ -229,24 +230,14 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   fieldGroup: {
-    gap: 8,
+    ...fieldStack,
   },
   label: {
-    color: colors.primary,
-    fontFamily: fonts.body,
-    fontSize: 14,
-    fontWeight: fontWeights.semibold,
+    ...label,
   },
   input: {
-    backgroundColor: "#ffffff",
-    borderColor: "#d9e1ea",
-    borderRadius: 8,
-    borderWidth: 1,
-    color: colors.primary,
-    fontFamily: fonts.body,
-    fontSize: 16,
+    ...textInput,
     minHeight: 50,
-    paddingHorizontal: 14,
   },
   inputError: {
     borderColor: "#d24747",

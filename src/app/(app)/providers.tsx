@@ -4,7 +4,8 @@ import { useProviders } from "@/hooks/useProviders";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { ProviderType } from "@/types/provider";
-import { useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 
 type ProviderFilter = "all" | ProviderType;
@@ -18,6 +19,15 @@ const providerFilters: { label: string; value: ProviderFilter }[] = [
 export default function ProvidersScreen() {
   const { error, isLoading, providers } = useProviders();
   const [activeFilter, setActiveFilter] = useState<ProviderFilter>("all");
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setActiveFilter("all");
+      };
+    }, []),
+  );
+
   const filteredProviders =
     activeFilter === "all"
       ? providers
@@ -134,6 +144,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 6,
     flex: 1,
+    justifyContent: "center",
+    minHeight: 46,
     paddingVertical: 10,
   },
   filterButtonActive: {

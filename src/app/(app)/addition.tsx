@@ -1,8 +1,11 @@
 import { HapticButton } from "@/components/common/HapticButton";
+import AddAppointmentForm from "@/components/appointments/add-appointment-form";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
-import { useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { SafeAreaView, StyleSheet, Text, View } from "react-native";
+import AddProviderForm from "../../components/providers/add-provider-form";
 
 const providerFilters: {
   label: string;
@@ -14,6 +17,14 @@ const providerFilters: {
 
 export default function AddScreen() {
   const [activeFilter, setActiveFilter] = useState<string>("provider");
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setActiveFilter("provider");
+      };
+    }, []),
+  );
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -58,9 +69,9 @@ export default function AddScreen() {
 
         <View style={styles.formContainer}>
           {activeFilter === "provider" ? (
-            <Text>Provider Form</Text>
+            <AddProviderForm />
           ) : (
-            <Text>Appointment Form</Text>
+            <AddAppointmentForm />
           )}
         </View>
       </View>
@@ -117,6 +128,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 6,
     flex: 1,
+    justifyContent: "center",
+    minHeight: 46,
     paddingVertical: 10,
   },
 
