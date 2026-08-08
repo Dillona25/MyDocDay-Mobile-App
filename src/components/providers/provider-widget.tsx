@@ -7,9 +7,14 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 type ProviderWidgetProps = {
   provider: Provider;
   onDelete?: () => void;
+  variant?: "compact" | "full";
 };
 
-export function ProviderWidget({ provider, onDelete }: ProviderWidgetProps) {
+export function ProviderWidget({
+  provider,
+  onDelete,
+  variant = "compact",
+}: ProviderWidgetProps) {
   const displayName =
     provider.type === "clinic"
       ? (provider.clinicName ?? "Clinic")
@@ -25,18 +30,30 @@ export function ProviderWidget({ provider, onDelete }: ProviderWidgetProps) {
   );
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, variant === "full" ? styles.fullCard : null]}>
       <View style={styles.header}>
         {provider.imageUrl ? (
           <Image
             accessibilityLabel={displayName}
             contentFit="cover"
             source={{ uri: provider.imageUrl }}
-            style={styles.avatarImage}
+            style={[
+              styles.avatarImage,
+              variant === "full" ? styles.fullAvatar : null,
+            ]}
           />
         ) : (
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
+          <View
+            style={[styles.avatar, variant === "full" ? styles.fullAvatar : null]}
+          >
+            <Text
+              style={[
+                styles.avatarText,
+                variant === "full" ? styles.fullAvatarText : null,
+              ]}
+            >
+              {initials}
+            </Text>
           </View>
         )}
 
@@ -53,19 +70,39 @@ export function ProviderWidget({ provider, onDelete }: ProviderWidgetProps) {
             ) : null}
           </View>
 
-          <Text numberOfLines={1} style={styles.providerName}>
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.providerName,
+              variant === "full" ? styles.fullProviderName : null,
+            ]}
+          >
             {displayName}
           </Text>
-          <Text style={styles.specialty}>{provider.specialty}</Text>
+          <Text
+            style={[
+              styles.specialty,
+              variant === "full" ? styles.fullSpecialty : null,
+            ]}
+          >
+            {provider.specialty}
+          </Text>
         </View>
       </View>
 
       {hasDetails ? (
-        <View style={styles.details}>
+        <View
+          style={[styles.details, variant === "full" ? styles.fullDetails : null]}
+        >
           {location || provider.zipCode ? (
             <View style={styles.detailGroup}>
               <Text style={styles.detailLabel}>Location</Text>
-              <Text style={styles.detailText}>
+              <Text
+                style={[
+                  styles.detailText,
+                  variant === "full" ? styles.fullDetailText : null,
+                ]}
+              >
                 {[location, provider.zipCode].filter(Boolean).join(" ")}
               </Text>
             </View>
@@ -76,7 +113,14 @@ export function ProviderWidget({ provider, onDelete }: ProviderWidgetProps) {
               style={location || provider.zipCode ? styles.phoneGroup : null}
             >
               <Text style={styles.detailLabel}>Phone</Text>
-              <Text style={styles.detailText}>{provider.phoneNumber}</Text>
+              <Text
+                style={[
+                  styles.detailText,
+                  variant === "full" ? styles.fullDetailText : null,
+                ]}
+              >
+                {provider.phoneNumber}
+              </Text>
             </View>
           ) : null}
         </View>
@@ -92,6 +136,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     padding: 14,
+  },
+  fullCard: {
+    backgroundColor: "#ffffff",
+    borderColor: "rgba(31, 53, 87, 0.14)",
+    elevation: 3,
+    padding: 18,
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
   },
   header: {
     alignItems: "flex-start",
@@ -111,11 +168,18 @@ const styles = StyleSheet.create({
     height: 48,
     width: 48,
   },
+  fullAvatar: {
+    height: 60,
+    width: 60,
+  },
   avatarText: {
     color: colors.primary,
     fontFamily: fonts.body,
     fontSize: 15,
     fontWeight: fontWeights.semibold,
+  },
+  fullAvatarText: {
+    fontSize: 18,
   },
   headingContent: {
     flex: 1,
@@ -146,12 +210,20 @@ const styles = StyleSheet.create({
     fontWeight: fontWeights.semibold,
     marginTop: 2,
   },
+  fullProviderName: {
+    fontSize: 19,
+    marginTop: 4,
+  },
   specialty: {
     color: "#334155",
     fontFamily: fonts.body,
     fontSize: 13,
     fontWeight: fontWeights.medium,
     marginTop: 1,
+  },
+  fullSpecialty: {
+    fontSize: 14,
+    marginTop: 2,
   },
   details: {
     borderTopColor: "#f1f5f9",
@@ -161,6 +233,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 12,
     paddingTop: 10,
+  },
+  fullDetails: {
+    marginTop: 16,
+    paddingTop: 14,
   },
   detailGroup: {
     flex: 1,
@@ -182,5 +258,9 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 13,
     marginTop: 2,
+  },
+  fullDetailText: {
+    fontSize: 14,
+    marginTop: 4,
   },
 });

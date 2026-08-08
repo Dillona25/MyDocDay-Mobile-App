@@ -1,19 +1,13 @@
 import { useAuth } from "@/auth/AuthContext";
 import { AppointmentWidget } from "@/components/appointments/appointment-widget";
+import { HapticButton } from "@/components/common/HapticButton";
 import { UserBar } from "@/components/dashboard/user-bar";
 import { ProviderWidget } from "@/components/providers/provider-widget";
 import { useProviders } from "@/hooks/useProviders";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import { router } from "expo-router";
-import {
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 
 const MAX_VISIBLE_PROVIDERS = 4;
 
@@ -34,36 +28,47 @@ export default function DashboardScreen() {
           <View style={styles.dashboardCard}>
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>Providers</Text>
-              <Pressable
+              <HapticButton
                 accessibilityRole="button"
                 onPress={() => router.push("/providers")}
                 style={styles.addButton}
               >
                 <Text style={styles.addButtonText}>+</Text>
-              </Pressable>
+              </HapticButton>
             </View>
 
-            <View style={styles.providerList}>
-              {error ? <Text style={styles.errorText}>{error}</Text> : null}
-              {isLoading ? (
-                <Text style={styles.helperText}>Loading providers...</Text>
-              ) : null}
-              {!isLoading &&
-                !error &&
-                visibleProviders.map((provider) => (
-                  <View key={provider.id} style={styles.providerContainer}>
-                    <ProviderWidget provider={provider} />
-                  </View>
-                ))}
-            </View>
+            {providers.length > 0 ? (
+              <View style={styles.providerList}>
+                {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                {isLoading ? (
+                  <Text style={styles.helperText}>Loading providers...</Text>
+                ) : null}
+                {!isLoading &&
+                  !error &&
+                  visibleProviders.map((provider) => (
+                    <View key={provider.id} style={styles.providerContainer}>
+                      <ProviderWidget provider={provider} />
+                    </View>
+                  ))}
+              </View>
+            ) : (
+              <View style={styles.providerListEmpty}>
+                <Text style={styles.emptyTitle}>
+                  You have no care providers
+                </Text>
+                <Text style={styles.emptyText}>
+                  Add your first provider and they will appear here!
+                </Text>
+              </View>
+            )}
 
             {hasMoreProviders ? (
-              <Pressable
+              <HapticButton
                 onPress={() => router.push("/providers")}
                 style={styles.footerButton}
               >
                 <Text style={styles.footerButtonText}>View all providers</Text>
-              </Pressable>
+              </HapticButton>
             ) : null}
           </View>
         </View>
@@ -118,6 +123,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 14,
+    borderColor: "rgba(31, 53, 87, 0.12)",
+    borderBottomWidth: 1,
+    paddingBottom: 16,
   },
   cardTitle: {
     color: colors.primary,
@@ -143,9 +151,28 @@ const styles = StyleSheet.create({
   providerList: {
     gap: 12,
   },
+  providerListEmpty: {
+    paddingHorizontal: 24,
+  },
   providerContainer: {
     display: "flex",
     flexDirection: "column",
+  },
+  emptyTitle: {
+    color: colors.primary,
+    fontFamily: fonts.heading,
+    fontSize: 18,
+    fontWeight: fontWeights.semibold,
+    marginTop: 10,
+    textAlign: "center",
+  },
+  emptyText: {
+    color: "#536173",
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 6,
+    textAlign: "center",
   },
   footerButton: {
     alignItems: "center",

@@ -5,7 +5,8 @@ import { fonts, fontWeights } from "@/theme/fonts";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { HapticButton } from "../common/HapticButton";
 
 const DAYS_TO_SHOW = 6;
 const MAX_VISIBLE_APPOINTMENTS = 3;
@@ -85,13 +86,13 @@ export function AppointmentWidget() {
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <Text style={styles.cardTitle}>Appointments</Text>
-        <Pressable
+        <HapticButton
           accessibilityRole="button"
           onPress={() => router.push("/add-appointment")}
           style={styles.addButton}
         >
           <Text style={styles.addButtonText}>+</Text>
-        </Pressable>
+        </HapticButton>
       </View>
 
       <Text style={styles.monthYearLabel}>{monthYearLabel}</Text>
@@ -101,7 +102,7 @@ export function AppointmentWidget() {
           const isSelected = day.id === selectedDayId;
 
           return (
-            <Pressable
+            <HapticButton
               key={day.id}
               accessibilityRole="button"
               onPress={() => setSelectedDayId(day.id)}
@@ -126,7 +127,7 @@ export function AppointmentWidget() {
               >
                 {day.label}
               </Text>
-            </Pressable>
+            </HapticButton>
           );
         })}
       </View>
@@ -164,12 +165,12 @@ export function AppointmentWidget() {
         </View>
       ) : null}
 
-      <Pressable
+      <HapticButton
         onPress={() => router.push("/appointments")}
         style={styles.footerButton}
       >
         <Text style={styles.footerButtonText}>View all appointments</Text>
-      </Pressable>
+      </HapticButton>
     </View>
   );
 }

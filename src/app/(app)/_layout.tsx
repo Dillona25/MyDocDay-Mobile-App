@@ -1,5 +1,7 @@
 import { useAuth } from "@/auth/AuthContext";
+import { HapticButton } from "@/components/common/HapticButton";
 import { colors } from "@/theme/colors";
+import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { Redirect, Tabs } from "expo-router";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
@@ -30,6 +32,15 @@ export default function AppLayout() {
         tabBarShowLabel: false,
         tabBarItemStyle: styles.tabBarItem,
         tabBarStyle: styles.tabBar,
+        tabBarButton: (props) => (
+          <HapticButton
+            {...props}
+            onPress={(e) => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              props.onPress?.(e);
+            }}
+          />
+        ),
       }}
     >
       <Tabs.Screen
