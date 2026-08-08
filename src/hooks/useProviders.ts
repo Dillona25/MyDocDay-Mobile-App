@@ -1,4 +1,4 @@
-import { getUserProviders } from "@/api/providers/get-providers";
+import { getUserProviders } from "@/api/providers/providers";
 import { useAuth } from "@/auth/AuthContext";
 import type { Provider } from "@/types/provider";
 import { useCallback, useEffect, useState } from "react";

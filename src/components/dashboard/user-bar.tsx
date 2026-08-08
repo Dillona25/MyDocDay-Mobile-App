@@ -15,14 +15,6 @@ function getInitials(user: SignedInUser | null) {
   return `${user.firstName?.charAt(0) ?? ""}${user.lastName?.charAt(0) ?? ""}`.toUpperCase();
 }
 
-function getDisplayName(user: SignedInUser | null) {
-  if (!user) {
-    return "MyDocDay";
-  }
-
-  return [user.firstName, user.lastName].filter(Boolean).join(" ");
-}
-
 export function UserBar({ user }: UserBarProps) {
   return (
     <View style={styles.container}>
@@ -34,7 +26,7 @@ export function UserBar({ user }: UserBarProps) {
         <View style={styles.greetingGroup}>
           <Text style={styles.greeting}>Hi, welcome back!</Text>
           <Text numberOfLines={1} style={styles.userName}>
-            {getDisplayName(user)}
+            {user?.firstName}
           </Text>
         </View>
       </View>

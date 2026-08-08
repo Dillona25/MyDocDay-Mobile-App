@@ -1,3 +1,5 @@
+import { AppointmentCard } from "@/components/appointments/appointment-card";
+import { useAppointments } from "@/hooks/useAppointments";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import { Image } from "expo-image";
@@ -6,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 const DAYS_TO_SHOW = 6;
+const MAX_VISIBLE_APPOINTMENTS = 3;
 
 function getDateKey(date: Date) {
   return [
@@ -32,6 +35,7 @@ function getAppointmentDays(currentDate: Date) {
 }
 
 export function AppointmentWidget() {
+  const { aptError, isLoadingApt, appointments } = useAppointments();
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const appointmentDays = useMemo(
     () => getAppointmentDays(currentDate),
@@ -43,6 +47,16 @@ export function AppointmentWidget() {
   });
   const [selectedDayId, setSelectedDayId] = useState(appointmentDays[0]?.id);
   const selectedDay = appointmentDays.find((day) => day.id === selectedDayId);
+  const selectedAppointments = appointments.filter(
+    (appointment) => appointment.date.slice(0, 10) === selectedDayId,
+  );
+  const visibleAppointments = selectedAppointments.slice(
+    0,
+    MAX_VISIBLE_APPOINTMENTS,
+  );
+  const hiddenAppointmentCount =
+    selectedAppointments.length - visibleAppointments.length;
+  const hasSelectedAppointments = selectedAppointments.length > 0;
   const appointmentTitle = selectedDay?.isToday
     ? "No appointments today"
     : "No appointments scheduled";
@@ -117,18 +131,38 @@ export function AppointmentWidget() {
         })}
       </View>
 
-      <View style={styles.emptyCard}>
-        <Image
-          accessibilityLabel="Relaxing with no appointments"
-          contentFit="contain"
-          source={require("../../assets/relax.svg")}
-          style={styles.emptyImage}
-        />
-        <Text style={styles.emptyTitle}>{appointmentTitle}</Text>
-        <Text style={styles.emptyText}>
-          When appointments are added, they will show here for the selected day.
-        </Text>
-      </View>
+      {hasSelectedAppointments ? (
+        <View style={styles.appointmentList}>
+          <Text style={styles.appointmentListLabel}>Appointments</Text>
+          {visibleAppointments.map((appointment) => (
+            <AppointmentCard
+              appointment={appointment}
+              key={appointment.id}
+              variant="compact"
+            />
+          ))}
+          {hiddenAppointmentCount > 0 ? (
+            <Text style={styles.moreAppointmentsText}>
+              +{hiddenAppointmentCount} more today
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+      {!isLoadingApt && !aptError && !hasSelectedAppointments ? (
+        <View style={styles.emptyCard}>
+          <Image
+            accessibilityLabel="Relaxing with no appointments"
+            contentFit="contain"
+            source={require("../../assets/relax.svg")}
+            style={styles.emptyImage}
+          />
+          <Text style={styles.emptyTitle}>{appointmentTitle}</Text>
+          <Text style={styles.emptyText}>
+            When appointments are added, they will show here for the selected
+            day.
+          </Text>
+        </View>
+      ) : null}
 
       <Pressable
         onPress={() => router.push("/appointments")}
@@ -224,6 +258,40 @@ const styles = StyleSheet.create({
   },
   dayTextSelected: {
     color: "#ffffff",
+  },
+  helperText: {
+    color: "#536173",
+    fontFamily: fonts.body,
+    fontSize: 14,
+    marginTop: 14,
+  },
+  errorText: {
+    color: "#d24747",
+    fontFamily: fonts.body,
+    fontSize: 14,
+    marginTop: 14,
+  },
+  appointmentList: {
+    borderTopColor: "rgba(31, 53, 87, 0.1)",
+    borderTopWidth: 1,
+    gap: 10,
+    marginTop: 18,
+    paddingTop: 14,
+  },
+  appointmentListLabel: {
+    color: "#94a3b8",
+    fontFamily: fonts.body,
+    fontSize: 11,
+    fontWeight: fontWeights.semibold,
+    textTransform: "uppercase",
+  },
+  moreAppointmentsText: {
+    color: "#94a3b8",
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: fontWeights.semibold,
+    marginTop: 2,
+    textAlign: "center",
   },
   emptyCard: {
     alignItems: "center",
