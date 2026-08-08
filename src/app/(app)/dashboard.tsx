@@ -15,7 +15,7 @@ import {
   View,
 } from "react-native";
 
-const MAX_VISIBLE_PROVIDERS = 3;
+const MAX_VISIBLE_PROVIDERS = 4;
 
 export default function DashboardScreen() {
   const { user } = useAuth();
