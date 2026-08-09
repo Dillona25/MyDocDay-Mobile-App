@@ -1,6 +1,5 @@
 import AddAppointmentForm from "@/components/appointments/add-appointment-form";
 import { HapticButton } from "@/components/common/HapticButton";
-import Toast from "@/components/common/Toast";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import { useFocusEffect } from "expo-router";
@@ -16,21 +15,8 @@ const providerFilters: {
   { label: "Appointment", value: "appointment" },
 ];
 
-export type ToastType = "success" | "error";
-
-type ToastState = {
-  visible: boolean;
-  message: string;
-  type: ToastType;
-};
-
 export default function AddScreen() {
   const [activeFilter, setActiveFilter] = useState<string>("provider");
-  const [toast, setToast] = useState<ToastState>({
-    visible: false,
-    message: "",
-    type: "success",
-  });
 
   useFocusEffect(
     useCallback(() => {
@@ -39,21 +25,6 @@ export default function AddScreen() {
       };
     }, []),
   );
-
-  function showToast(message: string, type: ToastType = "success") {
-    setToast({
-      visible: true,
-      message,
-      type,
-    });
-
-    setTimeout(() => {
-      setToast((current) => ({
-        ...current,
-        visible: false,
-      }));
-    }, 2500);
-  }
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -98,18 +69,11 @@ export default function AddScreen() {
 
         <View style={styles.formContainer}>
           {activeFilter === "provider" ? (
-            <AddProviderForm onSuccess={showToast} />
+            <AddProviderForm />
           ) : (
             <AddAppointmentForm />
           )}
         </View>
-
-        <Toast
-          visible={toast.visible}
-          message={toast.message}
-          bottomOffset={35}
-          type={toast.type}
-        />
       </View>
     </SafeAreaView>
   );

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 
-type ToastType = "success" | "error";
+export type ToastType = "success" | "error";
 
 type ToastProps = {
   visible: boolean;
