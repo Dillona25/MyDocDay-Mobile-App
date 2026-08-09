@@ -1,3 +1,4 @@
+import { PickerModal } from "@/components/common/PickerModal";
 import { appointmentTypes } from "@/data/appointmentTypes";
 import { useCreateAppointment } from "@/hooks/useCreateAppointment";
 import { useProviders } from "@/hooks/useProviders";
@@ -28,7 +29,7 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -47,6 +48,9 @@ const providerOptions = [
 ] as const;
 
 type ActivePicker = "date" | "time" | null;
+
+const minimumAppointmentDate = new Date(1900, 0, 1);
+const maximumAppointmentDate = new Date(2100, 11, 31);
 
 function formatDateForApi(date: Date) {
   return [
@@ -135,13 +139,11 @@ export default function AddAppointmentForm() {
   function updateSelectedDate(date: Date) {
     setSelectedDate(date);
     updateField("date", formatDateForApi(date));
-    setActivePicker(null);
   }
 
   function updateSelectedTime(date: Date) {
     setSelectedTime(date);
     updateField("startTime", formatTimeForApi(date));
-    setActivePicker(null);
   }
 
   function openPicker(mode: Exclude<ActivePicker, null>) {
@@ -150,6 +152,12 @@ export default function AddAppointmentForm() {
         value: mode === "date" ? selectedDate : selectedTime,
         mode,
         is24Hour: false,
+        ...(mode === "date"
+          ? {
+              minimumDate: minimumAppointmentDate,
+              maximumDate: maximumAppointmentDate,
+            }
+          : {}),
         onChange: (event, date) => {
           if (event.type !== "set" || !date) {
             return;
@@ -233,16 +241,22 @@ export default function AddAppointmentForm() {
 
         {activePicker === "date" ? (
           <NativeDateTimePickerPanel
+            key="appointment-date-picker"
             mode="date"
+            onCancel={() => setActivePicker(null)}
             onChange={updateSelectedDate}
+            onDone={() => setActivePicker(null)}
             value={selectedDate}
           />
         ) : null}
 
         {activePicker === "time" ? (
           <NativeDateTimePickerPanel
+            key="appointment-time-picker"
             mode="time"
+            onCancel={() => setActivePicker(null)}
             onChange={updateSelectedTime}
+            onDone={() => setActivePicker(null)}
             value={selectedTime}
           />
         ) : null}
@@ -442,31 +456,67 @@ function DateTimeTrigger({
 type NativeDateTimePickerPanelProps = {
   mode: "date" | "time";
   value: Date;
+  onCancel: () => void;
   onChange: (date: Date) => void;
+  onDone: () => void;
 };
 
 function NativeDateTimePickerPanel({
   mode,
+  onCancel,
   onChange,
+  onDone,
   value,
 }: NativeDateTimePickerPanelProps) {
+  const [draftValue, setDraftValue] = useState(value);
+
+  useEffect(() => {
+    setDraftValue(value);
+  }, [value]);
+
   function handleChange(event: DateTimePickerEvent, date?: Date) {
     if (event.type === "set" && date) {
-      onChange(date);
+      setDraftValue(date);
     }
   }
 
+  function handleDone() {
+    onChange(draftValue);
+    onDone();
+  }
+
   return (
-    <View style={styles.pickerShell}>
-      <DateTimePicker
-        display="spinner"
-        is24Hour={false}
-        mode={mode}
-        onChange={handleChange}
-        textColor={colors.primary}
-        value={value}
-      />
-    </View>
+    <PickerModal
+      onClose={onCancel}
+      onDone={handleDone}
+      title={mode === "date" ? "Choose a date" : "Choose a start time"}
+      visible
+    >
+      {mode === "date" ? (
+        <DateTimePicker
+          display="spinner"
+          key="native-date-picker"
+          maximumDate={maximumAppointmentDate}
+          minimumDate={minimumAppointmentDate}
+          mode="date"
+          onChange={handleChange}
+          style={styles.nativePicker}
+          textColor={colors.primary}
+          value={draftValue}
+        />
+      ) : (
+        <DateTimePicker
+          display="spinner"
+          is24Hour={false}
+          key="native-time-picker"
+          mode="time"
+          onChange={handleChange}
+          style={styles.nativePicker}
+          textColor={colors.primary}
+          value={draftValue}
+        />
+      )}
+    </PickerModal>
   );
 }
 
@@ -514,15 +564,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: fontWeights.semibold,
   },
-  pickerShell: {
-    backgroundColor: "#ffffff",
-    borderColor: "#d9e1ea",
-    borderRadius: 8,
-    borderWidth: 1,
-    minHeight: 54,
-    overflow: "hidden",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+  nativePicker: {
+    height: 216,
+    width: "100%",
   },
   savedProviderList: {
     gap: 10,

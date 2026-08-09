@@ -50,3 +50,29 @@ export async function createProvider(
 
   return data;
 }
+
+type DeleteProviderResponse = {
+  message: string;
+};
+
+export async function deleteProvider(
+  providerId: number,
+  token: string,
+): Promise<DeleteProviderResponse> {
+  const response = await fetch("https://www.mydocday.com/api/providers", {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ providerId }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message ?? "Unable to delete provider");
+  }
+
+  return data;
+}

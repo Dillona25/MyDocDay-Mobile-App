@@ -1,5 +1,6 @@
 import { AppointmentCard } from "@/components/appointments/appointment-card";
 import { HapticButton } from "@/components/common/HapticButton";
+import { PickerModal } from "@/components/common/PickerModal";
 import { useAppointments } from "@/hooks/useAppointments";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
@@ -8,6 +9,7 @@ import DateTimePicker, {
   DateTimePickerAndroid,
   type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
+import { Picker } from "@react-native-picker/picker";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
@@ -105,7 +107,15 @@ export default function AppointmentsScreen() {
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [selectedPastYear, setSelectedPastYear] = useState<number | null>(null);
   const [selectedPastDate, setSelectedPastDate] = useState<Date | null>(null);
+  const [draftPastDate, setDraftPastDate] = useState(() => new Date());
+  const [selectedPastProvider, setSelectedPastProvider] = useState<
+    string | null
+  >(null);
+  const [draftPastProvider, setDraftPastProvider] = useState<string | null>(
+    null,
+  );
   const [showIOSDatePicker, setShowIOSDatePicker] = useState(false);
+  const [showProviderPicker, setShowProviderPicker] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -120,7 +130,11 @@ export default function AppointmentsScreen() {
         setActiveFilter("upcoming");
         setSelectedPastYear(null);
         setSelectedPastDate(null);
+        setDraftPastDate(new Date());
+        setSelectedPastProvider(null);
+        setDraftPastProvider(null);
         setShowIOSDatePicker(false);
+        setShowProviderPicker(false);
       };
     }, []),
   );
@@ -165,30 +179,67 @@ export default function AppointmentsScreen() {
     [pastAppointments],
   );
 
+  const pastProviderOptions = useMemo(() => {
+    const options = new Map<string, string>();
+
+    pastAppointments.forEach((appointment) => {
+      if (!appointment.doctorName) {
+        return;
+      }
+
+      const value = appointment.providerId
+        ? `provider:${appointment.providerId}`
+        : `name:${appointment.doctorName.toLowerCase()}`;
+
+      options.set(value, appointment.doctorName);
+    });
+
+    return Array.from(options, ([value, label]) => ({ value, label })).sort(
+      (first, second) => first.label.localeCompare(second.label),
+    );
+  }, [pastAppointments]);
+
   const filteredPastAppointments = useMemo(() => {
-    if (selectedPastDate) {
-      const selectedDateKey = getDateKey(selectedPastDate);
+    const selectedDateKey = selectedPastDate
+      ? getDateKey(selectedPastDate)
+      : null;
 
-      return pastAppointments.filter(
-        (appointment) => appointment.date.slice(0, 10) === selectedDateKey,
-      );
-    }
+    return pastAppointments.filter((appointment) => {
+      const matchesDate = selectedDateKey
+        ? appointment.date.slice(0, 10) === selectedDateKey
+        : true;
+      const matchesYear =
+        !selectedPastYear || selectedDateKey
+          ? true
+          : getAppointmentDateTime(appointment).getFullYear() ===
+            selectedPastYear;
+      const providerFilterValue = appointment.providerId
+        ? `provider:${appointment.providerId}`
+        : appointment.doctorName
+          ? `name:${appointment.doctorName.toLowerCase()}`
+          : null;
+      const matchesProvider = selectedPastProvider
+        ? providerFilterValue === selectedPastProvider
+        : true;
 
-    if (selectedPastYear) {
-      return pastAppointments.filter(
-        (appointment) =>
-          getAppointmentDateTime(appointment).getFullYear() ===
-          selectedPastYear,
-      );
-    }
-
-    return pastAppointments;
-  }, [pastAppointments, selectedPastDate, selectedPastYear]);
+      return matchesDate && matchesYear && matchesProvider;
+    });
+  }, [
+    pastAppointments,
+    selectedPastDate,
+    selectedPastProvider,
+    selectedPastYear,
+  ]);
 
   const visibleAppointmentCount =
     activeFilter === "upcoming"
       ? upcomingAppointments.length
       : filteredPastAppointments.length;
+  const selectedProviderLabel = selectedPastProvider
+    ? pastProviderOptions.find(
+        (providerOption) => providerOption.value === selectedPastProvider,
+      )?.label
+    : null;
 
   function selectPastYear(year: number | null) {
     setSelectedPastYear(year);
@@ -196,16 +247,31 @@ export default function AppointmentsScreen() {
     setShowIOSDatePicker(false);
   }
 
+  function selectPastDate(date: Date) {
+    setSelectedPastDate(date);
+    setSelectedPastYear(date.getFullYear());
+  }
+
   function handlePastDateChange(event: DateTimePickerEvent, date?: Date) {
     if (event.type !== "set" || !date) {
       return;
     }
 
-    setSelectedPastDate(date);
-    setSelectedPastYear(date.getFullYear());
+    selectPastDate(date);
+  }
+
+  function handleDraftPastDateChange(
+    event: DateTimePickerEvent,
+    date?: Date,
+  ) {
+    if (event.type === "set" && date) {
+      setDraftPastDate(date);
+    }
   }
 
   function openPastDatePicker() {
+    setShowProviderPicker(false);
+
     if (Platform.OS === "android") {
       DateTimePickerAndroid.open({
         value: selectedPastDate ?? currentTime,
@@ -216,11 +282,14 @@ export default function AppointmentsScreen() {
       return;
     }
 
+    setDraftPastDate(selectedPastDate ?? currentTime);
     setShowIOSDatePicker((isVisible) => !isVisible);
   }
 
   const hasActiveHistoryFilter =
-    selectedPastYear !== null || selectedPastDate !== null;
+    selectedPastYear !== null ||
+    selectedPastDate !== null ||
+    selectedPastProvider !== null;
   const emptyTitle =
     activeFilter === "past" &&
     pastAppointments.length > 0 &&
@@ -231,7 +300,7 @@ export default function AppointmentsScreen() {
     activeFilter === "upcoming"
       ? "New appointments will appear here as your care schedule grows."
       : hasActiveHistoryFilter
-        ? "Try another year or clear the exact date to see more history."
+        ? "Try adjusting the year, date, or provider to see more history."
         : "Completed appointments will collect here over time.";
 
   return (
@@ -355,22 +424,83 @@ export default function AppointmentsScreen() {
             </View>
 
             {Platform.OS === "ios" && showIOSDatePicker ? (
-              <View style={styles.iosDatePicker}>
+              <PickerModal
+                onClose={() => setShowIOSDatePicker(false)}
+                onDone={() => {
+                  selectPastDate(draftPastDate);
+                  setShowIOSDatePicker(false);
+                }}
+                title="Choose an exact date"
+                visible
+              >
                 <DateTimePicker
                   display="spinner"
                   maximumDate={currentTime}
                   mode="date"
-                  onChange={handlePastDateChange}
+                  onChange={handleDraftPastDateChange}
+                  style={styles.historyNativePicker}
                   textColor={colors.primary}
-                  value={selectedPastDate ?? currentTime}
+                  value={draftPastDate}
                 />
+              </PickerModal>
+            ) : null}
+
+            {pastProviderOptions.length > 0 ? (
+              <>
                 <HapticButton
-                  onPress={() => setShowIOSDatePicker(false)}
-                  style={styles.datePickerDoneButton}
+                  onPress={() => {
+                    setShowIOSDatePicker(false);
+                    if (showProviderPicker) {
+                      setShowProviderPicker(false);
+                    } else {
+                      setDraftPastProvider(selectedPastProvider);
+                      setShowProviderPicker(true);
+                    }
+                  }}
+                  style={[
+                    styles.providerFilterButton,
+                    showProviderPicker
+                      ? styles.providerFilterButtonActive
+                      : null,
+                  ]}
                 >
-                  <Text style={styles.datePickerDoneText}>Done</Text>
+                  <Text style={styles.providerFilterLabel}>Provider</Text>
+                  <Text style={styles.providerFilterValue}>
+                    {selectedProviderLabel ?? "Any provider"}
+                  </Text>
                 </HapticButton>
-              </View>
+
+                {showProviderPicker ? (
+                  <PickerModal
+                    onClose={() => setShowProviderPicker(false)}
+                    onDone={() => {
+                      setSelectedPastProvider(draftPastProvider);
+                      setShowProviderPicker(false);
+                    }}
+                    title="Choose a provider"
+                    visible
+                  >
+                    <Picker
+                      dropdownIconColor={colors.primary}
+                      mode="dropdown"
+                      onValueChange={(value) =>
+                        setDraftPastProvider(value || null)
+                      }
+                      selectedValue={draftPastProvider ?? ""}
+                      style={styles.providerPicker}
+                    >
+                      <Picker.Item label="Any provider" value="" />
+                      {pastProviderOptions.map((providerOption) => (
+                        <Picker.Item
+                          key={providerOption.value}
+                          label={providerOption.label}
+                          value={providerOption.value}
+                        />
+                      ))}
+                    </Picker>
+                  </PickerModal>
+                ) : null}
+              </>
             ) : null}
           </View>
         ) : null}
@@ -616,23 +746,42 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: fontWeights.semibold,
   },
-  iosDatePicker: {
-    borderTopColor: "rgba(31, 53, 87, 0.08)",
-    borderTopWidth: 1,
-    paddingTop: 8,
+  historyNativePicker: {
+    height: 216,
+    width: "100%",
   },
-  datePickerDoneButton: {
-    alignItems: "center",
-    backgroundColor: colors.secondary,
+  providerFilterButton: {
+    backgroundColor: "#f8fafc",
+    borderColor: "rgba(31, 53, 87, 0.14)",
     borderRadius: 8,
-    minHeight: 42,
+    borderWidth: 1,
     justifyContent: "center",
+    minHeight: 54,
+    paddingHorizontal: 14,
   },
-  datePickerDoneText: {
-    color: "#ffffff",
+  providerFilterButtonActive: {
+    borderColor: colors.secondary,
+    borderWidth: 2,
+  },
+  providerFilterLabel: {
+    color: "#7b8798",
+    fontFamily: fonts.body,
+    fontSize: 10,
+    fontWeight: fontWeights.semibold,
+    textTransform: "uppercase",
+  },
+  providerFilterValue: {
+    color: colors.primary,
     fontFamily: fonts.body,
     fontSize: 14,
     fontWeight: fontWeights.semibold,
+    marginTop: 2,
+  },
+  providerPicker: {
+    color: colors.primary,
+    fontFamily: fonts.body,
+    height: Platform.select({ ios: 216, default: 56 }),
+    width: "100%",
   },
   statusContainer: {
     alignItems: "center",

@@ -78,6 +78,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="providers"
         options={{
+          popToTopOnBlur: true,
           title: "Providers",
           tabBarIcon: ({ color, focused }) => (
             <TabIcon color={color} focused={focused} name="providers" />

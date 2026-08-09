@@ -2,7 +2,9 @@ import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { Provider } from "@/types/provider";
 import { Image } from "expo-image";
+import { router, type Href } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { HapticButton } from "../common/HapticButton";
 
 type ProviderWidgetProps = {
   provider: Provider;
@@ -30,7 +32,18 @@ export function ProviderWidget({
   );
 
   return (
-    <View style={[styles.card, variant === "full" ? styles.fullCard : null]}>
+    <HapticButton
+      accessibilityLabel={`View ${displayName}`}
+      accessibilityRole="button"
+      onPress={() =>
+        router.push(`/providers/${provider.id}` as Href)
+      }
+      style={({ pressed }) => [
+        styles.card,
+        variant === "full" ? styles.fullCard : null,
+        pressed ? styles.cardPressed : null,
+      ]}
+    >
       <View style={styles.header}>
         {provider.imageUrl ? (
           <Image
@@ -63,7 +76,10 @@ export function ProviderWidget({
             {onDelete ? (
               <Pressable
                 accessibilityLabel={`Delete ${displayName}`}
-                onPress={onDelete}
+                onPress={(event) => {
+                  event.stopPropagation();
+                  onDelete();
+                }}
               >
                 <Text style={styles.deleteText}>Delete</Text>
               </Pressable>
@@ -125,7 +141,7 @@ export function ProviderWidget({
           ) : null}
         </View>
       ) : null}
-    </View>
+    </HapticButton>
   );
 }
 
@@ -149,6 +165,10 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.08,
     shadowRadius: 18,
+  },
+  cardPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.99 }],
   },
   header: {
     alignItems: "flex-start",
