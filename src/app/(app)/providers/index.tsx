@@ -6,7 +6,13 @@ import { fonts, fontWeights } from "@/theme/fonts";
 import type { ProviderType } from "@/types/provider";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 type ProviderFilter = "all" | ProviderType;
 

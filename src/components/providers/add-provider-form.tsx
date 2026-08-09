@@ -18,11 +18,11 @@ import {
 import type { ProviderFormData } from "@/types/provider-form";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { HapticButton } from "../common/HapticButton";
 
-const initialProviderFormData: ProviderFormData = {
+export const initialProviderFormData: ProviderFormData = {
   firstName: "",
   lastName: "",
   clinicName: "",
@@ -36,8 +36,20 @@ const initialProviderFormData: ProviderFormData = {
   zipCode: "",
 };
 
-export default function AddProviderForm() {
-  const [formData, setFormData] = useState(initialProviderFormData);
+type AddProviderFormProps = {
+  footer?: ReactNode;
+  initialData?: ProviderFormData;
+  mode?: "create" | "edit";
+  onEditSubmit?: (formData: ProviderFormData) => void | Promise<void>;
+};
+
+export default function AddProviderForm({
+  footer,
+  initialData = initialProviderFormData,
+  mode = "create",
+  onEditSubmit,
+}: AddProviderFormProps) {
+  const [formData, setFormData] = useState(initialData);
   const providerType = formData.type;
   const { token } = useAuth();
   const createProviderMutation = useCreateProvider();
@@ -46,9 +58,9 @@ export default function AddProviderForm() {
   useFocusEffect(
     useCallback(() => {
       return () => {
-        setFormData(initialProviderFormData);
+        setFormData(initialData);
       };
-    }, []),
+    }, [initialData]),
   );
 
   function updateField(fieldName: keyof ProviderFormData, value: string) {
@@ -59,7 +71,10 @@ export default function AddProviderForm() {
   }
 
   async function onSubmitPress(formData: ProviderFormData) {
-    console.log("formData:", formData);
+    if (mode === "edit") {
+      await onEditSubmit?.(formData);
+      return;
+    }
 
     if (!token) {
       return;
@@ -205,8 +220,12 @@ export default function AddProviderForm() {
             style={submitButton}
             onPress={() => onSubmitPress(formData)}
           >
-            <Text style={submitButtonText}>Add Provider</Text>
+            <Text style={submitButtonText}>
+              {mode === "edit" ? "Save Changes" : "Add Provider"}
+            </Text>
           </HapticButton>
+
+          {footer}
         </>
       ) : null}
     </ScrollView>
