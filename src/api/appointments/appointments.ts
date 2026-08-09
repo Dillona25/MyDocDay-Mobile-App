@@ -49,3 +49,29 @@ export async function createAppointment(
 
   return data;
 }
+
+type DeleteAppointmentResponse = {
+  message: string;
+};
+
+export async function deleteAppointment(
+  appointmentId: number,
+  token: string,
+): Promise<DeleteAppointmentResponse> {
+  const response = await fetch("https://www.mydocday.com/api/appointments", {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ appointmentId }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message ?? "Unable to delete appointment");
+  }
+
+  return data;
+}
