@@ -7,7 +7,7 @@ import type {
 export async function getUserAppointments(
   token: string,
 ): Promise<GetAppointmentResponse> {
-  const response = await fetch("https://www.mydocday.com/api/appointments", {
+  const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/api/appointments`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -32,7 +32,7 @@ export async function createAppointment(
   appointmentData: CreateAppointmentInput,
   token: string,
 ): Promise<CreateAppointmentResponse> {
-  const response = await fetch("https://www.mydocday.com/api/appointments", {
+  const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/api/appointments`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -58,7 +58,7 @@ export async function deleteAppointment(
   appointmentId: number,
   token: string,
 ): Promise<DeleteAppointmentResponse> {
-  const response = await fetch("https://www.mydocday.com/api/appointments", {
+  const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/api/appointments`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",

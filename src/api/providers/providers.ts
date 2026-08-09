@@ -7,7 +7,7 @@ import type {
 export async function getUserProviders(
   token: string,
 ): Promise<GetProvidersResponse> {
-  const response = await fetch("https://www.mydocday.com/api/providers", {
+  const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/api/providers`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -33,7 +33,7 @@ export async function createProvider(
   providerData: CreateProviderRequest,
   token: string,
 ): Promise<CreateProviderResponse> {
-  const response = await fetch("https://www.mydocday.com/api/providers", {
+  const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/api/providers`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -59,7 +59,7 @@ export async function deleteProvider(
   providerId: number,
   token: string,
 ): Promise<DeleteProviderResponse> {
-  const response = await fetch("https://www.mydocday.com/api/providers", {
+  const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/api/providers`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",

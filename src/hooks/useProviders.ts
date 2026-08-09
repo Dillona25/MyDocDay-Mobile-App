@@ -5,11 +5,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 export const providersQueryKey = ["providers"] as const;
 
 export function useProviders() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const queryClient = useQueryClient();
 
   const providersQuery = useQuery({
-    queryKey: providersQueryKey,
+    queryKey: [...providersQueryKey, user?.id],
     queryFn: async () => {
       if (!token) {
         return [];
@@ -19,7 +19,7 @@ export function useProviders() {
 
       return data.providers;
     },
-    enabled: Boolean(token),
+    enabled: Boolean(token && user),
   });
 
   return {

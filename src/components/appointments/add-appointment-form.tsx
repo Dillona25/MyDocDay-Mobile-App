@@ -268,7 +268,13 @@ export default function AddAppointmentForm({
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.form}>
+    <ScrollView
+      automaticallyAdjustKeyboardInsets
+      contentContainerStyle={styles.form}
+      keyboardDismissMode="interactive"
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
       <FloatingInput
         labelText="Appointment Title"
         onChangeText={(value) => updateField("title", value)}
@@ -640,7 +646,7 @@ function TimeWheelPicker({
 const styles = StyleSheet.create({
   form: {
     gap: 18,
-    paddingBottom: 32,
+    paddingBottom: 112,
   },
   fieldGroup: {
     gap: 10,
