@@ -84,10 +84,15 @@ export default function ProvidersScreen() {
         <View style={styles.providerList}>
           {!isLoading && !error && filteredProviders.length === 0 ? (
             <View>
-              <Text style={styles.helperHeader}>No {activeFilter}s found.</Text>
+              <Text style={styles.helperHeader}>
+                {activeFilter === "all"
+                  ? "No providers found."
+                  : `No ${activeFilter}s found.`}
+              </Text>
               <Text style={styles.emptyText}>
-                Add your first {activeFilter} and they will appear in this
-                filter.
+                {activeFilter === "all"
+                  ? "Add your first provider or clinic and they will appear here."
+                  : `Add your first ${activeFilter} and they will appear in this filter.`}
               </Text>
             </View>
           ) : null}
