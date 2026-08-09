@@ -27,9 +27,10 @@ import DateTimePicker, {
   DateTimePickerAndroid,
   type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
+import { Picker } from "@react-native-picker/picker";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -94,30 +95,76 @@ function createInitialAppointmentFormData(date: Date): AppointmentFormData {
   };
 }
 
-export default function AddAppointmentForm() {
+function parseAppointmentDate(dateValue: string) {
+  const [year, month, day] = dateValue.slice(0, 10).split("-").map(Number);
+
+  return year && month && day ? new Date(year, month - 1, day) : new Date();
+}
+
+function parseAppointmentTime(timeValue: string) {
+  const [hours, minutes] = timeValue.split(":").map(Number);
+  const date = new Date();
+
+  if (!Number.isNaN(hours) && !Number.isNaN(minutes)) {
+    date.setHours(hours, minutes, 0, 0);
+  }
+
+  return date;
+}
+
+type AddAppointmentFormProps = {
+  footer?: ReactNode;
+  initialData?: AppointmentFormData;
+  mode?: "create" | "edit";
+  onEditSubmit?: (formData: AppointmentFormData) => void | Promise<void>;
+};
+
+export default function AddAppointmentForm({
+  footer,
+  initialData,
+  mode = "create",
+  onEditSubmit,
+}: AddAppointmentFormProps) {
+  const [defaultInitialData] = useState(() =>
+    createInitialAppointmentFormData(new Date()),
+  );
+  const resolvedInitialData = initialData ?? defaultInitialData;
   const { error, isLoading, providers } = useProviders();
   const { token } = useAuth();
   const createAppointmentMutation = useCreateAppointment();
   const { showToast } = useToast();
   const [activePicker, setActivePicker] = useState<ActivePicker>(null);
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
-  const [selectedTime, setSelectedTime] = useState(() => new Date());
-  const [formData, setFormData] = useState(() =>
-    createInitialAppointmentFormData(new Date()),
+  const [selectedDate, setSelectedDate] = useState(() =>
+    parseAppointmentDate(resolvedInitialData.date),
   );
+  const [selectedTime, setSelectedTime] = useState(() =>
+    parseAppointmentTime(resolvedInitialData.startTime),
+  );
+  const [formData, setFormData] = useState(resolvedInitialData);
   const selectedProviderMode = formData.providerSelection;
 
   useFocusEffect(
     useCallback(() => {
       return () => {
-        const nextDate = new Date();
+        const nextDate =
+          mode === "edit"
+            ? parseAppointmentDate(resolvedInitialData.date)
+            : new Date();
+        const nextTime =
+          mode === "edit"
+            ? parseAppointmentTime(resolvedInitialData.startTime)
+            : nextDate;
 
         setSelectedDate(nextDate);
-        setSelectedTime(nextDate);
+        setSelectedTime(nextTime);
         setActivePicker(null);
-        setFormData(createInitialAppointmentFormData(nextDate));
+        setFormData(
+          mode === "edit"
+            ? resolvedInitialData
+            : createInitialAppointmentFormData(nextDate),
+        );
       };
-    }, []),
+    }, [mode, resolvedInitialData]),
   );
 
   function updateField(fieldName: keyof AppointmentFormData, value: string) {
@@ -177,6 +224,11 @@ export default function AddAppointmentForm() {
   }
 
   async function onSubmitPress(formData: AppointmentFormData) {
+    if (mode === "edit") {
+      await onEditSubmit?.(formData);
+      return;
+    }
+
     if (!token) {
       return;
     }
@@ -216,7 +268,13 @@ export default function AddAppointmentForm() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.form}>
+    <ScrollView
+      automaticallyAdjustKeyboardInsets
+      contentContainerStyle={styles.form}
+      keyboardDismissMode="interactive"
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
       <FloatingInput
         labelText="Appointment Title"
         onChangeText={(value) => updateField("title", value)}
@@ -391,8 +449,12 @@ export default function AddAppointmentForm() {
         onPress={() => onSubmitPress(formData)}
         style={submitButton}
       >
-        <Text style={submitButtonText}>Add Appointment</Text>
+        <Text style={submitButtonText}>
+          {mode === "edit" ? "Save Changes" : "Add Appointment"}
+        </Text>
       </HapticButton>
+
+      {footer}
     </ScrollView>
   );
 }
@@ -505,25 +567,86 @@ function NativeDateTimePickerPanel({
           value={draftValue}
         />
       ) : (
-        <DateTimePicker
-          display="spinner"
-          is24Hour={false}
-          key="native-time-picker"
-          mode="time"
-          onChange={handleChange}
-          style={styles.nativePicker}
-          textColor={colors.primary}
-          value={draftValue}
-        />
+        <TimeWheelPicker onChange={setDraftValue} value={draftValue} />
       )}
     </PickerModal>
+  );
+}
+
+const hourOptions = Array.from({ length: 12 }, (_, index) => index + 1);
+const minuteOptions = Array.from({ length: 60 }, (_, index) => index);
+
+function TimeWheelPicker({
+  onChange,
+  value,
+}: {
+  onChange: (date: Date) => void;
+  value: Date;
+}) {
+  const period = value.getHours() >= 12 ? "PM" : "AM";
+  const hour = value.getHours() % 12 || 12;
+
+  function updateTime(nextHour: number, nextMinute: number, nextPeriod: string) {
+    const nextValue = new Date(value);
+    const hour24 =
+      nextPeriod === "PM" ? (nextHour % 12) + 12 : nextHour % 12;
+
+    nextValue.setHours(hour24, nextMinute, 0, 0);
+    onChange(nextValue);
+  }
+
+  return (
+    <View style={styles.timeWheelRow}>
+      <Picker
+        onValueChange={(nextHour) =>
+          updateTime(Number(nextHour), value.getMinutes(), period)
+        }
+        selectedValue={hour}
+        style={styles.timeWheel}
+      >
+        {hourOptions.map((hourOption) => (
+          <Picker.Item
+            key={hourOption}
+            label={String(hourOption)}
+            value={hourOption}
+          />
+        ))}
+      </Picker>
+
+      <Picker
+        onValueChange={(nextMinute) =>
+          updateTime(hour, Number(nextMinute), period)
+        }
+        selectedValue={value.getMinutes()}
+        style={styles.timeWheel}
+      >
+        {minuteOptions.map((minuteOption) => (
+          <Picker.Item
+            key={minuteOption}
+            label={String(minuteOption).padStart(2, "0")}
+            value={minuteOption}
+          />
+        ))}
+      </Picker>
+
+      <Picker
+        onValueChange={(nextPeriod) =>
+          updateTime(hour, value.getMinutes(), String(nextPeriod))
+        }
+        selectedValue={period}
+        style={styles.timeWheel}
+      >
+        <Picker.Item label="AM" value="AM" />
+        <Picker.Item label="PM" value="PM" />
+      </Picker>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   form: {
     gap: 18,
-    paddingBottom: 32,
+    paddingBottom: 112,
   },
   fieldGroup: {
     gap: 10,
@@ -567,6 +690,15 @@ const styles = StyleSheet.create({
   nativePicker: {
     height: 216,
     width: "100%",
+  },
+  timeWheelRow: {
+    flexDirection: "row",
+    height: 216,
+  },
+  timeWheel: {
+    color: colors.primary,
+    flex: 1,
+    fontFamily: fonts.body,
   },
   savedProviderList: {
     gap: 10,

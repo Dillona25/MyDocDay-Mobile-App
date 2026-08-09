@@ -1,15 +1,14 @@
+import AddAppointmentForm from "@/components/appointments/add-appointment-form";
+import { DeleteAppointmentModal } from "@/components/appointments/delete-appointment-modal";
 import { HapticButton } from "@/components/common/HapticButton";
-import AddProviderForm from "@/components/providers/add-provider-form";
-import { DeleteProviderModal } from "@/components/providers/delete-provider-modal";
 import { useAppointments } from "@/hooks/useAppointments";
-import { useDeleteProvider } from "@/hooks/useDeleteProvider";
-import { useProviders } from "@/hooks/useProviders";
-import { useUpdateProvider } from "@/hooks/useUpdateProvider";
+import { useDeleteAppointment } from "@/hooks/useDeleteAppointment";
+import { useUpdateAppointment } from "@/hooks/useUpdateAppointment";
 import { useToast } from "@/store/ToastContext";
 import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
-import type { ProviderFormData } from "@/types/provider-form";
+import type { AppointmentFormData } from "@/types/appointment-form";
 import * as Haptics from "expo-haptics";
 import { router, type Href, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
@@ -21,79 +20,71 @@ import {
   View,
 } from "react-native";
 
-export default function EditProviderScreen() {
-  const { providerId } = useLocalSearchParams<{ providerId: string }>();
-  const numericProviderId = Number(providerId);
-  const { error, isLoading, providers } = useProviders();
-  const { appointments } = useAppointments();
+export default function EditAppointmentScreen() {
+  const { appointmentId } = useLocalSearchParams<{ appointmentId: string }>();
+  const numericAppointmentId = Number(appointmentId);
+  const { appointments, aptError, isLoadingApt } = useAppointments();
   const { token } = useAuth();
   const { showToast } = useToast();
-  const deleteProviderMutation = useDeleteProvider();
-  const updateProviderMutation = useUpdateProvider();
+  const deleteAppointmentMutation = useDeleteAppointment();
+  const updateAppointmentMutation = useUpdateAppointment();
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const provider = providers.find(
-    (providerItem) => providerItem.id === numericProviderId,
+  const appointment = appointments.find(
+    (appointmentItem) => appointmentItem.id === numericAppointmentId,
   );
-  const initialFormData = useMemo<ProviderFormData | null>(() => {
-    if (!provider) {
+  const initialFormData = useMemo<AppointmentFormData | null>(() => {
+    if (!appointment) {
       return null;
     }
 
     return {
-      firstName: provider.firstName ?? "",
-      lastName: provider.lastName ?? "",
-      clinicName: provider.clinicName ?? "",
-      specialty: provider.specialty,
-      phoneNumber: provider.phoneNumber ?? "",
-      type: provider.type,
-      imageUrl: provider.imageUrl ?? "",
-      streetAddress: provider.streetAddress ?? "",
-      city: provider.city ?? "",
-      state: provider.state ?? "",
-      zipCode: provider.zipCode ?? "",
+      title: appointment.title,
+      date: appointment.date.slice(0, 10),
+      startTime: appointment.startTime.slice(0, 5),
+      appointmentType: appointment.appointmentType,
+      providerSelection: appointment.providerId
+        ? "saved"
+        : appointment.doctorName
+          ? "other"
+          : "",
+      providerId: appointment.providerId ? String(appointment.providerId) : "",
+      doctorName: appointment.providerId ? "" : (appointment.doctorName ?? ""),
     };
-  }, [provider]);
-  const appointmentCount = appointments.filter(
-    (appointment) => appointment.providerId === numericProviderId,
-  ).length;
+  }, [appointment]);
 
-  if (isLoading) {
+  if (isLoadingApt) {
     return (
       <SafeAreaView style={styles.screen}>
         <View style={styles.centeredState}>
           <ActivityIndicator color={colors.secondary} />
-          <Text style={styles.stateText}>Loading provider...</Text>
+          <Text style={styles.stateText}>Loading appointment...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (error || !provider || !initialFormData) {
+  if (aptError || !appointment || !initialFormData) {
     return (
       <SafeAreaView style={styles.screen}>
         <View style={styles.centeredState}>
-          <Text style={styles.stateTitle}>Provider not available</Text>
+          <Text style={styles.stateTitle}>Appointment not available</Text>
           <Text style={styles.stateText}>
-            {error || "This provider could not be found in your care team."}
+            {aptError || "This appointment could not be found in your schedule."}
           </Text>
           <HapticButton
-            onPress={() => router.replace("/providers" as Href)}
+            onPress={() => router.replace("/appointments" as Href)}
             style={styles.returnButton}
           >
-            <Text style={styles.returnButtonText}>Return to providers</Text>
+            <Text style={styles.returnButtonText}>Return to appointments</Text>
           </HapticButton>
         </View>
       </SafeAreaView>
     );
   }
 
-  const displayName =
-    provider.type === "clinic"
-      ? (provider.clinicName ?? "Clinic")
-      : [provider.firstName, provider.lastName].filter(Boolean).join(" ");
-  const providerTypeLabel = provider.type === "clinic" ? "Clinic" : "Provider";
+  const appointmentTitle = appointment.title;
 
-  async function handleUpdateProvider(formData: ProviderFormData) {
+  async function handleUpdateAppointment(formData: AppointmentFormData) {
     if (!token) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       showToast("Your session has expired. Please sign in again.", "error");
@@ -101,50 +92,42 @@ export default function EditProviderScreen() {
     }
 
     try {
-      const result = await updateProviderMutation.mutateAsync([
+      const result = await updateAppointmentMutation.mutateAsync([
         {
-          providerId: numericProviderId,
-          type: formData.type || "provider",
-          firstName:
-            formData.type === "provider" ? formData.firstName : undefined,
-          lastName:
-            formData.type === "provider" ? formData.lastName : undefined,
-          clinicName:
-            formData.type === "clinic" ? formData.clinicName : undefined,
-          specialty: formData.specialty,
-          phoneNumber: formData.phoneNumber,
-          imageUrl: formData.imageUrl,
-          streetAddress: formData.streetAddress,
-          city: formData.city,
-          state: formData.state,
-          zipCode: formData.zipCode,
+          appointmentId: numericAppointmentId,
+          title: formData.title.trim(),
+          date: formData.date.slice(0, 10),
+          startTime: formData.startTime.slice(0, 5),
+          appointmentType: formData.appointmentType || "in_person",
+          providerId:
+            formData.providerSelection === "saved" && formData.providerId
+              ? Number(formData.providerId)
+              : undefined,
+          doctorName:
+            formData.providerSelection === "other"
+              ? formData.doctorName.trim()
+              : undefined,
         },
         token,
       ]);
-      const updatedDisplayName =
-        result.provider.type === "clinic"
-          ? (result.provider.clinicName ?? "Clinic")
-          : [result.provider.firstName, result.provider.lastName]
-              .filter(Boolean)
-              .join(" ");
 
       await Haptics.notificationAsync(
         Haptics.NotificationFeedbackType.Success,
       );
-      showToast(`${updatedDisplayName} updated successfully`, "success");
-      router.replace(`/providers/${numericProviderId}` as Href);
+      showToast(`${result.appointment.title} updated successfully`, "success");
+      router.replace(`/appointments/${numericAppointmentId}` as Href);
     } catch (updateError) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       showToast(
         updateError instanceof Error
           ? updateError.message
-          : "Unable to update provider",
+          : "Unable to update appointment",
         "error",
       );
     }
   }
 
-  async function handleDeleteProvider() {
+  async function handleDeleteAppointment() {
     if (!token) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       showToast("Your session has expired. Please sign in again.", "error");
@@ -152,19 +135,22 @@ export default function EditProviderScreen() {
     }
 
     try {
-      await deleteProviderMutation.mutateAsync([numericProviderId, token]);
+      await deleteAppointmentMutation.mutateAsync([
+        numericAppointmentId,
+        token,
+      ]);
       setDeleteModalVisible(false);
       await Haptics.notificationAsync(
         Haptics.NotificationFeedbackType.Success,
       );
-      showToast(`${displayName} deleted successfully`, "success");
-      router.replace("/providers" as Href);
+      showToast(`${appointmentTitle} deleted successfully`, "success");
+      router.replace("/appointments" as Href);
     } catch (deleteError) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       showToast(
         deleteError instanceof Error
           ? deleteError.message
-          : "Unable to delete provider",
+          : "Unable to delete appointment",
         "error",
       );
     }
@@ -174,45 +160,44 @@ export default function EditProviderScreen() {
     <SafeAreaView style={styles.screen}>
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>Care Team</Text>
-          <Text style={styles.title}>Edit {providerTypeLabel}</Text>
+          <Text style={styles.eyebrow}>Appointments</Text>
+          <Text style={styles.title}>Edit Appointment</Text>
           <Text style={styles.description}>
-            Review and update the information stored for {displayName}.
+            Review and update the details stored for {appointmentTitle}.
           </Text>
         </View>
 
         <View style={styles.formContainer}>
-          <AddProviderForm
+          <AddAppointmentForm
             footer={
               <View style={styles.dangerSection}>
-                <Text style={styles.dangerTitle}>Delete {providerTypeLabel}</Text>
+                <Text style={styles.dangerTitle}>Delete Appointment</Text>
                 <Text style={styles.dangerText}>
-                  This permanently removes {displayName} and any linked
-                  appointments.
+                  This permanently removes {appointmentTitle} from your care
+                  schedule.
                 </Text>
                 <HapticButton
                   onPress={() => setDeleteModalVisible(true)}
                   style={styles.deleteButton}
                 >
                   <Text style={styles.deleteButtonText}>
-                    Delete {providerTypeLabel}
+                    Delete Appointment
                   </Text>
                 </HapticButton>
               </View>
             }
             initialData={initialFormData}
             mode="edit"
-            onEditSubmit={handleUpdateProvider}
+            onEditSubmit={handleUpdateAppointment}
           />
         </View>
       </View>
 
-      <DeleteProviderModal
-        appointmentCount={appointmentCount}
-        displayName={displayName}
-        isDeleting={deleteProviderMutation.isPending}
+      <DeleteAppointmentModal
+        appointmentTitle={appointmentTitle}
+        isDeleting={deleteAppointmentMutation.isPending}
         onClose={() => setDeleteModalVisible(false)}
-        onConfirm={handleDeleteProvider}
+        onConfirm={handleDeleteAppointment}
         visible={deleteModalVisible}
       />
     </SafeAreaView>

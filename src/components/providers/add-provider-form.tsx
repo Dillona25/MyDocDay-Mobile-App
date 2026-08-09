@@ -103,7 +103,13 @@ export default function AddProviderForm({
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.form}>
+    <ScrollView
+      automaticallyAdjustKeyboardInsets
+      contentContainerStyle={styles.form}
+      keyboardDismissMode="interactive"
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.fieldGroup}>
         <Text style={styles.groupLabel}>Is this a provider or clinic?</Text>
         <View style={segmentedRow}>
@@ -268,7 +274,7 @@ function FloatingInput({
 const styles = StyleSheet.create({
   form: {
     gap: 18,
-    paddingBottom: 32,
+    paddingBottom: 112,
   },
   fieldGroup: {
     gap: 10,

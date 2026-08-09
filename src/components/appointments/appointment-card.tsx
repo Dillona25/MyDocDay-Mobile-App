@@ -2,7 +2,9 @@ import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { Appointment } from "@/types/appointment";
 import { Image } from "expo-image";
+import { router, type Href } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { HapticButton } from "../common/HapticButton";
 
 type AppointmentCardProps = {
   appointment: Appointment;
@@ -53,7 +55,17 @@ export function AppointmentCard({
 
   if (variant === "compact") {
     return (
-      <View style={styles.compactCard}>
+      <HapticButton
+        accessibilityLabel={`View ${appointment.title}`}
+        accessibilityRole="button"
+        onPress={() =>
+          router.push(`/appointments/${appointment.id}` as Href)
+        }
+        style={({ pressed }) => [
+          styles.compactCard,
+          pressed ? styles.cardPressed : null,
+        ]}
+      >
         <View style={styles.compactIconFrame}>
           <Image
             contentFit="contain"
@@ -78,18 +90,29 @@ export function AppointmentCard({
               .join(" • ")}
           </Text>
         </View>
-      </View>
+      </HapticButton>
     );
   }
 
   return (
-    <View style={styles.card}>
+    <HapticButton
+      accessibilityLabel={`View ${appointment.title}`}
+      accessibilityRole="button"
+      onPress={() => router.push(`/appointments/${appointment.id}` as Href)}
+      style={({ pressed }) => [
+        styles.card,
+        pressed ? styles.cardPressed : null,
+      ]}
+    >
       <View style={styles.header}>
         <Text style={styles.widgetLabel}>Appointment</Text>
         {onDelete ? (
           <Pressable
             accessibilityLabel={`Delete ${appointment.title}`}
-            onPress={onDelete}
+            onPress={(event) => {
+              event.stopPropagation();
+              onDelete();
+            }}
           >
             <Text style={styles.deleteText}>Delete</Text>
           </Pressable>
@@ -133,7 +156,7 @@ export function AppointmentCard({
           </Text>
         </View>
       ) : null}
-    </View>
+    </HapticButton>
   );
 }
 
@@ -151,6 +174,9 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 28,
+  },
+  cardPressed: {
+    opacity: 0.82,
   },
   compactCard: {
     alignItems: "center",

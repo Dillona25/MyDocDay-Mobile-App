@@ -37,3 +37,7 @@ export type CreateProviderInput = {
   state?: string;
   zipCode?: string;
 };
+
+export type UpdateProviderInput = Omit<CreateProviderInput, "userId"> & {
+  providerId: number;
+};

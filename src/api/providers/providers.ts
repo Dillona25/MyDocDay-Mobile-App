@@ -2,12 +2,13 @@ import type {
   CreateProviderInput,
   GetProvidersResponse,
   Provider,
+  UpdateProviderInput,
 } from "@/types/provider";
 
 export async function getUserProviders(
   token: string,
 ): Promise<GetProvidersResponse> {
-  const response = await fetch("https://www.mydocday.com/api/providers", {
+  const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/api/providers`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -33,7 +34,7 @@ export async function createProvider(
   providerData: CreateProviderRequest,
   token: string,
 ): Promise<CreateProviderResponse> {
-  const response = await fetch("https://www.mydocday.com/api/providers", {
+  const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/api/providers`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -51,6 +52,33 @@ export async function createProvider(
   return data;
 }
 
+type UpdateProviderResponse = {
+  message: string;
+  provider: Provider;
+};
+
+export async function updateProvider(
+  providerData: UpdateProviderInput,
+  token: string,
+): Promise<UpdateProviderResponse> {
+  const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/api/providers`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(providerData),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message ?? "Unable to update provider");
+  }
+
+  return data;
+}
+
 type DeleteProviderResponse = {
   message: string;
 };
@@ -59,7 +87,7 @@ export async function deleteProvider(
   providerId: number,
   token: string,
 ): Promise<DeleteProviderResponse> {
-  const response = await fetch("https://www.mydocday.com/api/providers", {
+  const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/api/providers`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",

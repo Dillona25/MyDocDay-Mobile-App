@@ -29,3 +29,7 @@ export type CreateAppointmentInput = {
   providerId?: number;
   doctorName?: string;
 };
+
+export type UpdateAppointmentInput = CreateAppointmentInput & {
+  appointmentId: number;
+};

@@ -5,11 +5,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 export const appointmentsQueryKey = ["appointments"] as const;
 
 export function useAppointments() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const queryClient = useQueryClient();
 
   const appointmentsQuery = useQuery({
-    queryKey: appointmentsQueryKey,
+    queryKey: [...appointmentsQueryKey, user?.id],
     queryFn: async () => {
       if (!token) {
         return [];
@@ -19,7 +19,7 @@ export function useAppointments() {
 
       return data.appointments;
     },
-    enabled: Boolean(token),
+    enabled: Boolean(token && user),
   });
 
   return {

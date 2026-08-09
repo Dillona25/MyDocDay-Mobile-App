@@ -6,7 +6,7 @@ type CurrentUserResponse = {
 };
 
 export async function getCurrentUser(token: string) {
-  const response = await fetch("https://www.mydocday.com/api/auth/me", {
+  const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/api/auth/me`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,

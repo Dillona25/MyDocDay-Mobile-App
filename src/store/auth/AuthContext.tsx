@@ -7,12 +7,14 @@ import {
 } from "@/store/auth/token-storage";
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 type AuthContextValue = {
   user: SignedInUser | null;
@@ -33,6 +35,7 @@ type AuthProviderProps = {
 };
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<SignedInUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,6 +56,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(currentUser.user);
       } catch {
         await deleteSessionToken();
+        queryClient.clear();
         setToken(null);
         setUser(null);
       } finally {
@@ -61,19 +65,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     loadStoredToken();
-  }, []);
+  }, [queryClient]);
 
-  async function saveSession(session: { token: string; user: SignedInUser }) {
-    await saveSessionToken(session.token);
-    setToken(session.token);
-    setUser(session.user);
-  }
+  const saveSession = useCallback(
+    async (session: { token: string; user: SignedInUser }) => {
+      await saveSessionToken(session.token);
+      queryClient.clear();
+      setToken(session.token);
+      setUser(session.user);
+    },
+    [queryClient],
+  );
 
-  async function signOut() {
-    await deleteSessionToken();
+  const signOut = useCallback(async () => {
+    queryClient.clear();
     setToken(null);
     setUser(null);
-  }
+    await deleteSessionToken();
+  }, [queryClient]);
 
   const value = useMemo(
     () => ({
@@ -84,7 +93,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       saveSession,
       signOut,
     }),
-    [isLoading, token, user],
+    [isLoading, saveSession, signOut, token, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

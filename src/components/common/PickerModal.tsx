@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   backdropDismiss: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
   },
   modal: {
     backgroundColor: "#ffffff",
