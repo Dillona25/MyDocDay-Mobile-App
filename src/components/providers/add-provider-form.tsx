@@ -1,7 +1,7 @@
-import { createProvider } from "@/api/providers/providers";
 import { ToastType } from "@/app/(app)/addition";
 import { useAuth } from "@/auth/AuthContext";
 import { providerTypes } from "@/data/providerTypes";
+import { useCreateProvider } from "@/hooks/useCreateProvider";
 import {
   field,
   fieldStack,
@@ -51,6 +51,7 @@ export default function AddProviderForm({ onSuccess }: AddProviderFormProps) {
   const [formData, setFormData] = useState(initialProviderFormData);
   const providerType = formData.type;
   const { token } = useAuth();
+  const createProviderMutation = useCreateProvider();
 
   useFocusEffect(
     useCallback(() => {
@@ -75,7 +76,7 @@ export default function AddProviderForm({ onSuccess }: AddProviderFormProps) {
     }
 
     try {
-      const data = await createProvider(
+      await createProviderMutation.mutateAsync([
         {
           ...formData,
           type: formData.type || "provider",
@@ -84,7 +85,7 @@ export default function AddProviderForm({ onSuccess }: AddProviderFormProps) {
           clinicName: formData.type === "clinic" ? formData.clinicName : "",
         },
         token,
-      );
+      ]);
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onSuccess("Provider added successfully", "success");
@@ -106,6 +107,7 @@ export default function AddProviderForm({ onSuccess }: AddProviderFormProps) {
     } catch (error) {
       console.log(error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      onSuccess("Something went wrong with the request", "error");
     }
   }
 

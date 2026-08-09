@@ -108,6 +108,7 @@ export default function AddScreen() {
           visible={toast.visible}
           message={toast.message}
           bottomOffset={35}
+          type={toast.type}
         />
       </View>
     </SafeAreaView>

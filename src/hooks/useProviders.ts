@@ -1,44 +1,33 @@
 import { getUserProviders } from "@/api/providers/providers";
 import { useAuth } from "@/auth/AuthContext";
-import type { Provider } from "@/types/provider";
-import { useCallback, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+export const providersQueryKey = ["providers"] as const;
 
 export function useProviders() {
   const { token } = useAuth();
-  const [providers, setProviders] = useState<Provider[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const queryClient = useQueryClient();
 
-  const loadProviders = useCallback(async () => {
-    if (!token) {
-      return;
-    }
-
-    setIsLoading(true);
-    setError("");
-
-    try {
-      const data = await getUserProviders(token);
-      setProviders(data.providers);
-    } catch (requestError) {
-      if (requestError instanceof Error) {
-        setError(requestError.message);
-      } else {
-        setError("Unable to load providers.");
+  const providersQuery = useQuery({
+    queryKey: providersQueryKey,
+    queryFn: async () => {
+      if (!token) {
+        return [];
       }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [token]);
 
-  useEffect(() => {
-    loadProviders();
-  }, [loadProviders]);
+      const data = await getUserProviders(token);
+
+      return data.providers;
+    },
+    enabled: Boolean(token),
+  });
 
   return {
-    providers,
-    isLoading,
-    error,
-    refreshProviders: loadProviders,
+    providers: providersQuery.data ?? [],
+    isLoading: providersQuery.isLoading,
+    error:
+      providersQuery.error instanceof Error ? providersQuery.error.message : "",
+    refreshProviders: () =>
+      queryClient.invalidateQueries({ queryKey: providersQueryKey }),
   };
 }
