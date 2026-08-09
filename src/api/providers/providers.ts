@@ -2,6 +2,7 @@ import type {
   CreateProviderInput,
   GetProvidersResponse,
   Provider,
+  UpdateProviderInput,
 } from "@/types/provider";
 
 export async function getUserProviders(
@@ -46,6 +47,33 @@ export async function createProvider(
 
   if (!response.ok) {
     throw new Error(data.message ?? "Unable to create provider");
+  }
+
+  return data;
+}
+
+type UpdateProviderResponse = {
+  message: string;
+  provider: Provider;
+};
+
+export async function updateProvider(
+  providerData: UpdateProviderInput,
+  token: string,
+): Promise<UpdateProviderResponse> {
+  const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/api/providers`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(providerData),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message ?? "Unable to update provider");
   }
 
   return data;

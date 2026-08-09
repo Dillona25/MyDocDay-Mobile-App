@@ -3,6 +3,7 @@ import { DeleteAppointmentModal } from "@/components/appointments/delete-appoint
 import { HapticButton } from "@/components/common/HapticButton";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useDeleteAppointment } from "@/hooks/useDeleteAppointment";
+import { useUpdateAppointment } from "@/hooks/useUpdateAppointment";
 import { useToast } from "@/store/ToastContext";
 import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
@@ -26,6 +27,7 @@ export default function EditAppointmentScreen() {
   const { token } = useAuth();
   const { showToast } = useToast();
   const deleteAppointmentMutation = useDeleteAppointment();
+  const updateAppointmentMutation = useUpdateAppointment();
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const appointment = appointments.find(
     (appointmentItem) => appointmentItem.id === numericAppointmentId,
@@ -38,7 +40,7 @@ export default function EditAppointmentScreen() {
     return {
       title: appointment.title,
       date: appointment.date.slice(0, 10),
-      startTime: appointment.startTime,
+      startTime: appointment.startTime.slice(0, 5),
       appointmentType: appointment.appointmentType,
       providerSelection: appointment.providerId
         ? "saved"
@@ -81,6 +83,49 @@ export default function EditAppointmentScreen() {
   }
 
   const appointmentTitle = appointment.title;
+
+  async function handleUpdateAppointment(formData: AppointmentFormData) {
+    if (!token) {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      showToast("Your session has expired. Please sign in again.", "error");
+      return;
+    }
+
+    try {
+      const result = await updateAppointmentMutation.mutateAsync([
+        {
+          appointmentId: numericAppointmentId,
+          title: formData.title.trim(),
+          date: formData.date.slice(0, 10),
+          startTime: formData.startTime.slice(0, 5),
+          appointmentType: formData.appointmentType || "in_person",
+          providerId:
+            formData.providerSelection === "saved" && formData.providerId
+              ? Number(formData.providerId)
+              : undefined,
+          doctorName:
+            formData.providerSelection === "other"
+              ? formData.doctorName.trim()
+              : undefined,
+        },
+        token,
+      ]);
+
+      await Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Success,
+      );
+      showToast(`${result.appointment.title} updated successfully`, "success");
+      router.replace(`/appointments/${numericAppointmentId}` as Href);
+    } catch (updateError) {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      showToast(
+        updateError instanceof Error
+          ? updateError.message
+          : "Unable to update appointment",
+        "error",
+      );
+    }
+  }
 
   async function handleDeleteAppointment() {
     if (!token) {
@@ -143,7 +188,7 @@ export default function EditAppointmentScreen() {
             }
             initialData={initialFormData}
             mode="edit"
-            onEditSubmit={() => {}}
+            onEditSubmit={handleUpdateAppointment}
           />
         </View>
       </View>

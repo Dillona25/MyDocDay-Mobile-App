@@ -2,6 +2,7 @@ import type {
   Appointment,
   CreateAppointmentInput,
   GetAppointmentResponse,
+  UpdateAppointmentInput,
 } from "@/types/appointment";
 
 export async function getUserAppointments(
@@ -45,6 +46,41 @@ export async function createAppointment(
 
   if (!response.ok) {
     throw new Error(data.message ?? "Unable to create appointment");
+  }
+
+  return data;
+}
+
+type UpdateAppointmentResponse = {
+  message: string;
+  appointment: Appointment;
+};
+
+export async function updateAppointment(
+  appointmentData: UpdateAppointmentInput,
+  token: string,
+): Promise<UpdateAppointmentResponse> {
+  const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/api/appointments`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(appointmentData),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const validationMessage = Object.values(
+      (data.errors ?? {}) as Record<string, string[]>,
+    )
+      .flat()
+      .find(Boolean);
+
+    throw new Error(
+      validationMessage ?? data.message ?? "Unable to update appointment",
+    );
   }
 
   return data;

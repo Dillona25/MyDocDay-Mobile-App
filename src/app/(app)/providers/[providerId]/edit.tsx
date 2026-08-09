@@ -4,6 +4,7 @@ import { DeleteProviderModal } from "@/components/providers/delete-provider-moda
 import { useAppointments } from "@/hooks/useAppointments";
 import { useDeleteProvider } from "@/hooks/useDeleteProvider";
 import { useProviders } from "@/hooks/useProviders";
+import { useUpdateProvider } from "@/hooks/useUpdateProvider";
 import { useToast } from "@/store/ToastContext";
 import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
@@ -28,6 +29,7 @@ export default function EditProviderScreen() {
   const { token } = useAuth();
   const { showToast } = useToast();
   const deleteProviderMutation = useDeleteProvider();
+  const updateProviderMutation = useUpdateProvider();
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const provider = providers.find(
     (providerItem) => providerItem.id === numericProviderId,
@@ -91,6 +93,57 @@ export default function EditProviderScreen() {
       : [provider.firstName, provider.lastName].filter(Boolean).join(" ");
   const providerTypeLabel = provider.type === "clinic" ? "Clinic" : "Provider";
 
+  async function handleUpdateProvider(formData: ProviderFormData) {
+    if (!token) {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      showToast("Your session has expired. Please sign in again.", "error");
+      return;
+    }
+
+    try {
+      const result = await updateProviderMutation.mutateAsync([
+        {
+          providerId: numericProviderId,
+          type: formData.type || "provider",
+          firstName:
+            formData.type === "provider" ? formData.firstName : undefined,
+          lastName:
+            formData.type === "provider" ? formData.lastName : undefined,
+          clinicName:
+            formData.type === "clinic" ? formData.clinicName : undefined,
+          specialty: formData.specialty,
+          phoneNumber: formData.phoneNumber,
+          imageUrl: formData.imageUrl,
+          streetAddress: formData.streetAddress,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+        },
+        token,
+      ]);
+      const updatedDisplayName =
+        result.provider.type === "clinic"
+          ? (result.provider.clinicName ?? "Clinic")
+          : [result.provider.firstName, result.provider.lastName]
+              .filter(Boolean)
+              .join(" ");
+
+      await Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Success,
+      );
+      showToast(`${updatedDisplayName} updated successfully`, "success");
+      router.replace(`/providers/${numericProviderId}` as Href);
+    } catch (updateError) {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      showToast(
+        updateError instanceof Error
+          ? updateError.message
+          : "Unable to update provider",
+        "error",
+      );
+    }
+  }
+
   async function handleDeleteProvider() {
     if (!token) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -149,7 +202,7 @@ export default function EditProviderScreen() {
             }
             initialData={initialFormData}
             mode="edit"
-            onEditSubmit={() => {}}
+            onEditSubmit={handleUpdateProvider}
           />
         </View>
       </View>
