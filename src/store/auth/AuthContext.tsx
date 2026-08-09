@@ -4,7 +4,7 @@ import {
   deleteSessionToken,
   getSessionToken,
   saveSessionToken,
-} from "@/auth/token-storage";
+} from "@/store/auth/token-storage";
 import {
   createContext,
   useContext,
@@ -19,7 +19,10 @@ type AuthContextValue = {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  saveSession: (session: { token: string; user: SignedInUser }) => Promise<void>;
+  saveSession: (session: {
+    token: string;
+    user: SignedInUser;
+  }) => Promise<void>;
   signOut: () => Promise<void>;
 };
 

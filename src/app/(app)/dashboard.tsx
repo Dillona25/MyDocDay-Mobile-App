@@ -1,9 +1,9 @@
-import { useAuth } from "@/auth/AuthContext";
 import { AppointmentWidget } from "@/components/appointments/appointment-widget";
 import { HapticButton } from "@/components/common/HapticButton";
 import { UserBar } from "@/components/dashboard/user-bar";
 import { ProviderWidget } from "@/components/providers/provider-widget";
 import { useProviders } from "@/hooks/useProviders";
+import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import { router } from "expo-router";

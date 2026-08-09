@@ -1,5 +1,5 @@
-import { useAuth } from "@/auth/AuthContext";
 import { HapticButton } from "@/components/common/HapticButton";
+import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";

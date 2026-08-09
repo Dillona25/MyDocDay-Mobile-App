@@ -1,4 +1,5 @@
-import { Button } from "@/components/common/Button";
+import { HapticButton } from "@/components/common/HapticButton";
+import { buttonPrimary, buttonSecondary, buttonText } from "@/theme/buttons";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import { Image } from "expo-image";
@@ -36,12 +37,12 @@ export default function WelcomeScreen() {
         </View>
 
         <View style={styles.actions}>
-          <Button buttonText="Sign in" onPress={handleSignIn} variant="primary" />
-          <Button
-            buttonText="Create account"
-            onPress={handleCreateAccount}
-            variant="secondary"
-          />
+          <HapticButton onPress={handleSignIn} style={buttonPrimary}>
+            <Text style={buttonText}>Sign in</Text>
+          </HapticButton>
+          <HapticButton onPress={handleCreateAccount} style={buttonSecondary}>
+            <Text style={buttonText}>Create account</Text>
+          </HapticButton>
         </View>
       </View>
     </SafeAreaView>

@@ -20,3 +20,12 @@ export type GetAppointmentResponse = {
   message: string;
   appointments: Appointment[];
 };
+
+export type CreateAppointmentInput = {
+  title: string;
+  date: string;
+  startTime: string;
+  appointmentType: AppointmentType;
+  providerId?: number;
+  doctorName?: string;
+};

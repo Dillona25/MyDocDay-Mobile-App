@@ -1,6 +1,6 @@
-import { useAuth } from "@/auth/AuthContext";
 import { providerTypes } from "@/data/providerTypes";
 import { useCreateProvider } from "@/hooks/useCreateProvider";
+import { useAuth } from "@/store/auth/AuthContext";
 import { useToast } from "@/store/ToastContext";
 import {
   field,
@@ -19,14 +19,7 @@ import type { ProviderFormData } from "@/types/provider-form";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { HapticButton } from "../common/HapticButton";
 
 const initialProviderFormData: ProviderFormData = {
@@ -86,21 +79,7 @@ export default function AddProviderForm() {
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast("Provider added successfully", "success");
-
-      // Clears our form..
-      setFormData({
-        type: "",
-        firstName: "",
-        lastName: "",
-        clinicName: "",
-        specialty: "",
-        phoneNumber: "",
-        imageUrl: "",
-        streetAddress: "",
-        city: "",
-        state: "",
-        zipCode: "",
-      });
+      setFormData(initialProviderFormData);
     } catch (error) {
       console.log(error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -117,7 +96,7 @@ export default function AddProviderForm() {
             const isActive = providerType === typeOption.value;
 
             return (
-              <Pressable
+              <HapticButton
                 key={typeOption.value}
                 onPress={() => updateField("type", typeOption.value)}
                 style={[optionButton, isActive ? optionButtonActive : null]}
@@ -130,7 +109,7 @@ export default function AddProviderForm() {
                 >
                   {typeOption.label}
                 </Text>
-              </Pressable>
+              </HapticButton>
             );
           })}
         </View>

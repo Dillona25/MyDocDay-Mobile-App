@@ -1,7 +1,8 @@
 import type { SignedInUser } from "@/api/auth/sign-in";
+import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 type UserBarProps = {
   user: SignedInUser | null;
@@ -16,6 +17,8 @@ function getInitials(user: SignedInUser | null) {
 }
 
 export function UserBar({ user }: UserBarProps) {
+  const { signOut } = useAuth();
+
   return (
     <View style={styles.container}>
       <View style={styles.userInfo}>
@@ -30,6 +33,10 @@ export function UserBar({ user }: UserBarProps) {
           </Text>
         </View>
       </View>
+
+      <Pressable onPress={signOut} style={styles.logoutButton}>
+        <Text style={styles.logoutText}>Logout</Text>
+      </Pressable>
     </View>
   );
 }
@@ -82,6 +89,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: fontWeights.semibold,
     marginTop: 2,
+  },
+  logoutButton: {
+    borderColor: "rgba(31, 53, 87, 0.12)",
+    borderRadius: 8,
+    borderWidth: 1,
+    marginLeft: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  logoutText: {
+    color: colors.primary,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: fontWeights.semibold,
   },
   actions: {
     flexDirection: "row",

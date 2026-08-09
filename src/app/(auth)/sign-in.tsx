@@ -1,6 +1,7 @@
 import { signInUser } from "@/api/auth/sign-in";
-import { useAuth } from "@/auth/AuthContext";
-import { Button } from "@/components/common/Button";
+import { HapticButton } from "@/components/common/HapticButton";
+import { useAuth } from "@/store/auth/AuthContext";
+import { buttonDisabled, buttonPrimary, buttonText } from "@/theme/buttons";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import { fieldStack, label, textInput } from "@/theme/forms";
@@ -165,12 +166,18 @@ export default function SignInScreen() {
                     </Text>
                   ) : null}
                 </View>
-                <Button
-                  buttonText={isSubmitting ? "Signing in..." : "Sign in"}
+                <HapticButton
                   disabled={!formIsValid || isSubmitting}
                   onPress={handleSignIn}
-                  variant="primary"
-                />
+                  style={[
+                    buttonPrimary,
+                    !formIsValid || isSubmitting ? buttonDisabled : null,
+                  ]}
+                >
+                  <Text style={buttonText}>
+                    {isSubmitting ? "Signing in..." : "Sign in"}
+                  </Text>
+                </HapticButton>
                 {submitMessage ? (
                   <Text style={[styles.submitMessage, styles.submitError]}>
                     {submitMessage}

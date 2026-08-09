@@ -1,11 +1,10 @@
 import { appointmentTypes } from "@/data/appointmentTypes";
+import { useCreateAppointment } from "@/hooks/useCreateAppointment";
 import { useProviders } from "@/hooks/useProviders";
+import { useAuth } from "@/store/auth/AuthContext";
+import { useToast } from "@/store/ToastContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
-import type {
-  AppointmentFormData,
-  AppointmentProviderSelection,
-} from "@/types/appointment-form";
 import {
   field,
   fieldStack,
@@ -19,16 +18,26 @@ import {
   submitButtonText,
   textInput,
 } from "@/theme/forms";
+import type {
+  AppointmentFormData,
+  AppointmentProviderSelection,
+} from "@/types/appointment-form";
+import DateTimePicker, {
+  DateTimePickerAndroid,
+  type DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
+import * as Haptics from "expo-haptics";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-  Pressable,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { HapticButton } from "../common/HapticButton";
 
 const otherDoctorValue = "other";
 
@@ -37,25 +46,72 @@ const providerOptions = [
   { label: "Different Provider", value: otherDoctorValue },
 ] as const;
 
-const initialAppointmentFormData: AppointmentFormData = {
-  title: "",
-  date: "",
-  startTime: "",
-  appointmentType: "",
-  providerSelection: "",
-  providerId: "",
-  doctorName: "",
-};
+type ActivePicker = "date" | "time" | null;
+
+function formatDateForApi(date: Date) {
+  return [
+    date.getFullYear(),
+    (date.getMonth() + 1).toString().padStart(2, "0"),
+    date.getDate().toString().padStart(2, "0"),
+  ].join("-");
+}
+
+function formatTimeForApi(date: Date) {
+  return [
+    date.getHours().toString().padStart(2, "0"),
+    date.getMinutes().toString().padStart(2, "0"),
+  ].join(":");
+}
+
+function formatDateForDisplay(date: Date) {
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatTimeForDisplay(date: Date) {
+  return date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function createInitialAppointmentFormData(date: Date): AppointmentFormData {
+  return {
+    title: "",
+    date: formatDateForApi(date),
+    startTime: formatTimeForApi(date),
+    appointmentType: "",
+    providerSelection: "",
+    providerId: "",
+    doctorName: "",
+  };
+}
 
 export default function AddAppointmentForm() {
   const { error, isLoading, providers } = useProviders();
-  const [formData, setFormData] = useState(initialAppointmentFormData);
+  const { token } = useAuth();
+  const createAppointmentMutation = useCreateAppointment();
+  const { showToast } = useToast();
+  const [activePicker, setActivePicker] = useState<ActivePicker>(null);
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [selectedTime, setSelectedTime] = useState(() => new Date());
+  const [formData, setFormData] = useState(() =>
+    createInitialAppointmentFormData(new Date()),
+  );
   const selectedProviderMode = formData.providerSelection;
 
   useFocusEffect(
     useCallback(() => {
       return () => {
-        setFormData(initialAppointmentFormData);
+        const nextDate = new Date();
+
+        setSelectedDate(nextDate);
+        setSelectedTime(nextDate);
+        setActivePicker(null);
+        setFormData(createInitialAppointmentFormData(nextDate));
       };
     }, []),
   );
@@ -76,6 +132,81 @@ export default function AddAppointmentForm() {
     }));
   }
 
+  function updateSelectedDate(date: Date) {
+    setSelectedDate(date);
+    updateField("date", formatDateForApi(date));
+    setActivePicker(null);
+  }
+
+  function updateSelectedTime(date: Date) {
+    setSelectedTime(date);
+    updateField("startTime", formatTimeForApi(date));
+    setActivePicker(null);
+  }
+
+  function openPicker(mode: Exclude<ActivePicker, null>) {
+    if (Platform.OS === "android") {
+      DateTimePickerAndroid.open({
+        value: mode === "date" ? selectedDate : selectedTime,
+        mode,
+        is24Hour: false,
+        onChange: (event, date) => {
+          if (event.type !== "set" || !date) {
+            return;
+          }
+
+          if (mode === "date") {
+            updateSelectedDate(date);
+          } else {
+            updateSelectedTime(date);
+          }
+        },
+      });
+      return;
+    }
+
+    setActivePicker((currentPicker) => (currentPicker === mode ? null : mode));
+  }
+
+  async function onSubmitPress(formData: AppointmentFormData) {
+    if (!token) {
+      return;
+    }
+
+    try {
+      await createAppointmentMutation.mutateAsync([
+        {
+          title: formData.title,
+          date: formData.date,
+          startTime: formData.startTime,
+          appointmentType: formData.appointmentType || "in_person",
+          providerId:
+            formData.providerSelection === "saved" && formData.providerId
+              ? Number(formData.providerId)
+              : undefined,
+          doctorName:
+            formData.providerSelection === otherDoctorValue
+              ? formData.doctorName
+              : undefined,
+        },
+        token,
+      ]);
+
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showToast("Appointment added successfully", "success");
+      const nextDate = new Date();
+
+      setSelectedDate(nextDate);
+      setSelectedTime(nextDate);
+      setActivePicker(null);
+      setFormData(createInitialAppointmentFormData(nextDate));
+    } catch (requestError) {
+      console.log(requestError);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      showToast("Something went wrong with the request", "error");
+    }
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.form}>
       <FloatingInput
@@ -84,19 +215,37 @@ export default function AddAppointmentForm() {
         value={formData.title}
       />
 
-      <View style={styles.fieldsRow}>
-        <FloatingInput
-          labelText="Date"
-          onChangeText={(value) => updateField("date", value)}
-          placeholder="YYYY-MM-DD"
-          value={formData.date}
-        />
-        <FloatingInput
-          labelText="Start Time"
-          onChangeText={(value) => updateField("startTime", value)}
-          placeholder="10:00 AM"
-          value={formData.startTime}
-        />
+      <View style={styles.dateTimeGroup}>
+        <View style={styles.dateTimeRow}>
+          <DateTimeTrigger
+            displayValue={formatDateForDisplay(selectedDate)}
+            isActive={activePicker === "date"}
+            labelText="Date"
+            onPress={() => openPicker("date")}
+          />
+          <DateTimeTrigger
+            displayValue={formatTimeForDisplay(selectedTime)}
+            isActive={activePicker === "time"}
+            labelText="Start Time"
+            onPress={() => openPicker("time")}
+          />
+        </View>
+
+        {activePicker === "date" ? (
+          <NativeDateTimePickerPanel
+            mode="date"
+            onChange={updateSelectedDate}
+            value={selectedDate}
+          />
+        ) : null}
+
+        {activePicker === "time" ? (
+          <NativeDateTimePickerPanel
+            mode="time"
+            onChange={updateSelectedTime}
+            value={selectedTime}
+          />
+        ) : null}
       </View>
 
       <View style={styles.fieldGroup}>
@@ -106,7 +255,7 @@ export default function AddAppointmentForm() {
             const isActive = formData.appointmentType === typeOption.value;
 
             return (
-              <Pressable
+              <HapticButton
                 key={typeOption.value}
                 onPress={() => updateField("appointmentType", typeOption.value)}
                 style={[optionButton, isActive ? optionButtonActive : null]}
@@ -119,7 +268,7 @@ export default function AddAppointmentForm() {
                 >
                   {typeOption.label}
                 </Text>
-              </Pressable>
+              </HapticButton>
             );
           })}
         </View>
@@ -132,7 +281,7 @@ export default function AddAppointmentForm() {
             const isActive = selectedProviderMode === providerOption.value;
 
             return (
-              <Pressable
+              <HapticButton
                 key={providerOption.value}
                 onPress={() => chooseProviderMode(providerOption.value)}
                 style={[optionButton, isActive ? optionButtonActive : null]}
@@ -145,7 +294,7 @@ export default function AddAppointmentForm() {
                 >
                   {providerOption.label}
                 </Text>
-              </Pressable>
+              </HapticButton>
             );
           })}
         </View>
@@ -175,7 +324,7 @@ export default function AddAppointmentForm() {
               provider.type === "clinic" ? "Clinic" : "Provider";
 
             return (
-              <Pressable
+              <HapticButton
                 key={provider.id}
                 onPress={() => updateField("providerId", providerId)}
                 style={[
@@ -210,7 +359,7 @@ export default function AddAppointmentForm() {
                     isActive ? styles.providerRadioActive : null,
                   ]}
                 />
-              </Pressable>
+              </HapticButton>
             );
           })}
         </View>
@@ -224,9 +373,12 @@ export default function AddAppointmentForm() {
         />
       ) : null}
 
-      <Pressable style={submitButton}>
+      <HapticButton
+        onPress={() => onSubmitPress(formData)}
+        style={submitButton}
+      >
         <Text style={submitButtonText}>Add Appointment</Text>
-      </Pressable>
+      </HapticButton>
     </ScrollView>
   );
 }
@@ -258,6 +410,66 @@ function FloatingInput({
   );
 }
 
+type DateTimeTriggerProps = {
+  labelText: string;
+  displayValue: string;
+  isActive: boolean;
+  onPress: () => void;
+};
+
+function DateTimeTrigger({
+  displayValue,
+  isActive,
+  labelText,
+  onPress,
+}: DateTimeTriggerProps) {
+  return (
+    <View style={[field, fieldStack]}>
+      <Text style={label}>{labelText}</Text>
+      <HapticButton
+        onPress={onPress}
+        style={[
+          styles.pickerTrigger,
+          isActive ? styles.pickerTriggerActive : null,
+        ]}
+      >
+        <Text style={styles.pickerTriggerText}>{displayValue}</Text>
+      </HapticButton>
+    </View>
+  );
+}
+
+type NativeDateTimePickerPanelProps = {
+  mode: "date" | "time";
+  value: Date;
+  onChange: (date: Date) => void;
+};
+
+function NativeDateTimePickerPanel({
+  mode,
+  onChange,
+  value,
+}: NativeDateTimePickerPanelProps) {
+  function handleChange(event: DateTimePickerEvent, date?: Date) {
+    if (event.type === "set" && date) {
+      onChange(date);
+    }
+  }
+
+  return (
+    <View style={styles.pickerShell}>
+      <DateTimePicker
+        display="spinner"
+        is24Hour={false}
+        mode={mode}
+        onChange={handleChange}
+        textColor={colors.primary}
+        value={value}
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   form: {
     gap: 18,
@@ -274,6 +486,43 @@ const styles = StyleSheet.create({
   fieldsRow: {
     flexDirection: "row",
     gap: 12,
+  },
+  dateTimeGroup: {
+    gap: 12,
+  },
+  dateTimeRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  pickerTrigger: {
+    backgroundColor: "#ffffff",
+    borderColor: "#d9e1ea",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 54,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  pickerTriggerActive: {
+    borderColor: colors.secondary,
+    borderWidth: 2,
+  },
+  pickerTriggerText: {
+    color: colors.primary,
+    fontFamily: fonts.body,
+    fontSize: 15,
+    fontWeight: fontWeights.semibold,
+  },
+  pickerShell: {
+    backgroundColor: "#ffffff",
+    borderColor: "#d9e1ea",
+    borderRadius: 8,
+    borderWidth: 1,
+    minHeight: 54,
+    overflow: "hidden",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   savedProviderList: {
     gap: 10,

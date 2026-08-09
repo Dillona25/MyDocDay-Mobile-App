@@ -1,44 +1,35 @@
 import { getUserAppointments } from "@/api/appointments/appointments";
-import { useAuth } from "@/auth/AuthContext";
-import { Appointment } from "@/types/appointment";
-import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "@/store/auth/AuthContext";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+export const appointmentsQueryKey = ["appointments"] as const;
 
 export function useAppointments() {
   const { token } = useAuth();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [isLoadingApt, setIsLoadingApt] = useState(false);
-  const [aptError, setAptError] = useState("");
+  const queryClient = useQueryClient();
 
-  const loadAppointments = useCallback(async () => {
-    if (!token) {
-      return;
-    }
-
-    setIsLoadingApt(true);
-    setAptError("");
-
-    try {
-      const data = await getUserAppointments(token);
-      setAppointments(data.appointments);
-    } catch (requestError) {
-      if (requestError instanceof Error) {
-        setAptError(requestError.message);
-      } else {
-        setAptError("Unable to load appointments.");
+  const appointmentsQuery = useQuery({
+    queryKey: appointmentsQueryKey,
+    queryFn: async () => {
+      if (!token) {
+        return [];
       }
-    } finally {
-      setIsLoadingApt(false);
-    }
-  }, [token]);
 
-  useEffect(() => {
-    loadAppointments();
-  }, [loadAppointments]);
+      const data = await getUserAppointments(token);
+
+      return data.appointments;
+    },
+    enabled: Boolean(token),
+  });
 
   return {
-    appointments,
-    isLoadingApt,
-    aptError,
-    refreshProviders: loadAppointments,
+    appointments: appointmentsQuery.data ?? [],
+    isLoadingApt: appointmentsQuery.isLoading,
+    aptError:
+      appointmentsQuery.error instanceof Error
+        ? appointmentsQuery.error.message
+        : "",
+    refreshAppointments: () =>
+      queryClient.invalidateQueries({ queryKey: appointmentsQueryKey }),
   };
 }
