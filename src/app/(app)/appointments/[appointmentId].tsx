@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/common/BackButton";
 import { HapticButton } from "@/components/common/HapticButton";
 import { useAppointments } from "@/hooks/useAppointments";
 import { colors } from "@/theme/colors";
@@ -52,7 +53,10 @@ function formatAppointmentTime(startTime: string) {
 }
 
 export default function AppointmentDetailsScreen() {
-  const { appointmentId } = useLocalSearchParams<{ appointmentId: string }>();
+  const { appointmentId, returnTo } = useLocalSearchParams<{
+    appointmentId: string;
+    returnTo?: string;
+  }>();
   const numericAppointmentId = Number(appointmentId);
   const { appointments, aptError, isLoadingApt } = useAppointments();
   const appointment = appointments.find(
@@ -102,6 +106,12 @@ export default function AppointmentDetailsScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.backNavigation}>
+          <BackButton
+            href={returnTo === "/dashboard" ? "/dashboard" : "/appointments"}
+            navigationMode={returnTo === "/dashboard" ? "navigate" : "dismiss"}
+          />
+        </View>
         <View style={styles.identitySection}>
           <View style={styles.iconFrame}>
             <Image
@@ -173,10 +183,14 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 40,
   },
+  backNavigation: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
+  },
   identitySection: {
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingTop: 12,
   },
   iconFrame: {
     alignItems: "center",

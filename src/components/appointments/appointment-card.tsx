@@ -9,6 +9,7 @@ import { HapticButton } from "../common/HapticButton";
 type AppointmentCardProps = {
   appointment: Appointment;
   onDelete?: () => void;
+  returnTo?: string;
   variant?: "compact" | "full";
 };
 
@@ -42,6 +43,7 @@ function formatAppointmentTime(startTime: string): string {
 export function AppointmentCard({
   appointment,
   onDelete,
+  returnTo,
   variant = "full",
 }: AppointmentCardProps) {
   const appointmentTypeLabel =
@@ -53,14 +55,27 @@ export function AppointmentCard({
       ? require("../../assets/video-solid-full.svg")
       : require("../../assets/hospital-solid-full.svg");
 
+  function openAppointment() {
+    if (returnTo) {
+      router.push({
+        pathname: "/appointments/[appointmentId]",
+        params: {
+          appointmentId: appointment.id,
+          returnTo,
+        },
+      });
+      return;
+    }
+
+    router.push(`/appointments/${appointment.id}` as Href);
+  }
+
   if (variant === "compact") {
     return (
       <HapticButton
         accessibilityLabel={`View ${appointment.title}`}
         accessibilityRole="button"
-        onPress={() =>
-          router.push(`/appointments/${appointment.id}` as Href)
-        }
+        onPress={openAppointment}
         style={({ pressed }) => [
           styles.compactCard,
           pressed ? styles.cardPressed : null,
@@ -98,7 +113,7 @@ export function AppointmentCard({
     <HapticButton
       accessibilityLabel={`View ${appointment.title}`}
       accessibilityRole="button"
-      onPress={() => router.push(`/appointments/${appointment.id}` as Href)}
+      onPress={openAppointment}
       style={({ pressed }) => [
         styles.card,
         pressed ? styles.cardPressed : null,
