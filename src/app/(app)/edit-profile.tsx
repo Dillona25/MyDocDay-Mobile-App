@@ -5,6 +5,7 @@ import {
   uploadUserProfileImage,
   type UpdateUserProfileInput,
 } from "@/api/users/profile";
+import { BackButton } from "@/components/common/BackButton";
 import { HapticButton } from "@/components/common/HapticButton";
 import { PickerModal } from "@/components/common/PickerModal";
 import { getStateAbbreviation, usStates } from "@/data/usStates";
@@ -191,6 +192,7 @@ export default function EditProfileScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        <BackButton fallbackHref="/account" />
         <View style={styles.header}>
           <Text style={styles.eyebrow}>Profile</Text>
           <Text style={styles.title}>Edit Profile</Text>

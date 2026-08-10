@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/common/BackButton";
 import { HapticButton } from "@/components/common/HapticButton";
 import { useAppointments } from "@/hooks/useAppointments";
 import { colors } from "@/theme/colors";
@@ -102,6 +103,9 @@ export default function AppointmentDetailsScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.backNavigation}>
+          <BackButton fallbackHref="/appointments" />
+        </View>
         <View style={styles.identitySection}>
           <View style={styles.iconFrame}>
             <Image
@@ -173,10 +177,14 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 40,
   },
+  backNavigation: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
+  },
   identitySection: {
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingTop: 12,
   },
   iconFrame: {
     alignItems: "center",

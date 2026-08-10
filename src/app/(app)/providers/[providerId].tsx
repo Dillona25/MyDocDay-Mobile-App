@@ -1,4 +1,5 @@
 import { AppointmentCard } from "@/components/appointments/appointment-card";
+import { BackButton } from "@/components/common/BackButton";
 import { HapticButton } from "@/components/common/HapticButton";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useProviders } from "@/hooks/useProviders";
@@ -181,6 +182,9 @@ export default function ProviderDetailsScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.backNavigation}>
+          <BackButton fallbackHref="/providers" />
+        </View>
         <View style={styles.identitySection}>
           {provider.imageUrl ? (
             <Image
@@ -384,10 +388,14 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 40,
   },
+  backNavigation: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
+  },
   identitySection: {
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingTop: 12,
   },
   avatar: {
     borderRadius: 8,

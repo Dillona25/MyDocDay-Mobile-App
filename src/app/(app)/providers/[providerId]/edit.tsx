@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/common/BackButton";
 import { HapticButton } from "@/components/common/HapticButton";
 import AddProviderForm from "@/components/providers/add-provider-form";
 import { DeleteProviderModal } from "@/components/providers/delete-provider-modal";
@@ -174,6 +175,11 @@ export default function EditProviderScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.content}>
+        <View style={styles.backButton}>
+          <BackButton
+            fallbackHref={`/providers/${numericProviderId}` as Href}
+          />
+        </View>
         <View style={styles.header}>
           <Text style={styles.eyebrow}>Care Team</Text>
           <Text style={styles.title}>Edit {providerTypeLabel}</Text>
@@ -229,6 +235,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 24,
+  },
+  backButton: {
+    marginBottom: 12,
   },
   header: {
     gap: 8,

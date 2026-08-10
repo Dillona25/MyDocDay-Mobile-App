@@ -1,5 +1,6 @@
-import { HapticButton } from "@/components/common/HapticButton";
 import { getUserProfileImageSource } from "@/api/users/profile";
+import { BackButton } from "@/components/common/BackButton";
+import { HapticButton } from "@/components/common/HapticButton";
 import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
@@ -70,6 +71,7 @@ export default function AccountScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        <BackButton fallbackHref="/dashboard" />
         <View style={styles.header}>
           <Text style={styles.eyebrow}>Account</Text>
           <Text style={styles.title}>Your MyDocDay</Text>
