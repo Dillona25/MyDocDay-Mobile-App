@@ -162,7 +162,7 @@ export default function EditAppointmentScreen() {
       <View style={styles.content}>
         <View style={styles.backButton}>
           <BackButton
-            fallbackHref={`/appointments/${numericAppointmentId}` as Href}
+            href={`/appointments/${numericAppointmentId}` as Href}
           />
         </View>
         <View style={styles.header}>

@@ -71,7 +71,7 @@ export default function AccountScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <BackButton fallbackHref="/dashboard" />
+        <BackButton href="/dashboard" navigationMode="navigate" />
         <View style={styles.header}>
           <Text style={styles.eyebrow}>Account</Text>
           <Text style={styles.title}>Your MyDocDay</Text>

@@ -53,7 +53,10 @@ function formatAppointmentTime(startTime: string) {
 }
 
 export default function AppointmentDetailsScreen() {
-  const { appointmentId } = useLocalSearchParams<{ appointmentId: string }>();
+  const { appointmentId, returnTo } = useLocalSearchParams<{
+    appointmentId: string;
+    returnTo?: string;
+  }>();
   const numericAppointmentId = Number(appointmentId);
   const { appointments, aptError, isLoadingApt } = useAppointments();
   const appointment = appointments.find(
@@ -104,7 +107,10 @@ export default function AppointmentDetailsScreen() {
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.backNavigation}>
-          <BackButton fallbackHref="/appointments" />
+          <BackButton
+            href={returnTo === "/dashboard" ? "/dashboard" : "/appointments"}
+            navigationMode={returnTo === "/dashboard" ? "navigate" : "dismiss"}
+          />
         </View>
         <View style={styles.identitySection}>
           <View style={styles.iconFrame}>

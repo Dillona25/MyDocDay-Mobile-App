@@ -177,7 +177,7 @@ export default function EditProviderScreen() {
       <View style={styles.content}>
         <View style={styles.backButton}>
           <BackButton
-            fallbackHref={`/providers/${numericProviderId}` as Href}
+            href={`/providers/${numericProviderId}` as Href}
           />
         </View>
         <View style={styles.header}>

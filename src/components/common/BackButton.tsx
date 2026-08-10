@@ -6,17 +6,21 @@ import { StyleSheet, Text } from "react-native";
 import { HapticButton } from "./HapticButton";
 
 type BackButtonProps = {
-  fallbackHref: Href;
+  href: Href;
+  navigationMode?: "dismiss" | "navigate";
 };
 
-export function BackButton({ fallbackHref }: BackButtonProps) {
+export function BackButton({
+  href,
+  navigationMode = "dismiss",
+}: BackButtonProps) {
   function goBack() {
-    if (router.canGoBack()) {
-      router.back();
+    if (navigationMode === "navigate") {
+      router.navigate(href);
       return;
     }
 
-    router.replace(fallbackHref);
+    router.dismissTo(href);
   }
 
   return (

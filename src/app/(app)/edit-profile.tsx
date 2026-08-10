@@ -192,7 +192,7 @@ export default function EditProfileScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <BackButton fallbackHref="/account" />
+        <BackButton href="/account" navigationMode="navigate" />
         <View style={styles.header}>
           <Text style={styles.eyebrow}>Profile</Text>
           <Text style={styles.title}>Edit Profile</Text>
