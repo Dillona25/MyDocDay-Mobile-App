@@ -42,7 +42,8 @@ export function DeleteAppointmentModal({
           <Text style={styles.title}>Delete {appointmentTitle}?</Text>
           <Text style={styles.description}>
             This appointment will be permanently removed from your schedule.
-            This action cannot be undone.
+            This action cannot be undone. If you added it to your device
+            calendar, you will also need to remove it there.
           </Text>
 
           <View style={styles.actionRow}>
