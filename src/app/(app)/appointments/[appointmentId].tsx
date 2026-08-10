@@ -1,11 +1,16 @@
+import { addAppointmentToCalendar } from "@/api/appointments/calendar";
 import { BackButton } from "@/components/common/BackButton";
 import { HapticButton } from "@/components/common/HapticButton";
 import { useAppointments } from "@/hooks/useAppointments";
+import { useProviders } from "@/hooks/useProviders";
+import { useToast } from "@/store/ToastContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { Appointment } from "@/types/appointment";
+import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
-import { router, type Href, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, type Href } from "expo-router";
+import { useState } from "react";
 import {
   ActivityIndicator,
   SafeAreaView,
@@ -16,10 +21,11 @@ import {
 } from "react-native";
 
 function getAppointmentDateTime(appointment: Appointment) {
-  const [year, month, day] = appointment.date.slice(0, 10).split("-").map(Number);
-  const [hours = 0, minutes = 0] = appointment.startTime
-    .split(":")
+  const [year, month, day] = appointment.date
+    .slice(0, 10)
+    .split("-")
     .map(Number);
+  const [hours = 0, minutes = 0] = appointment.startTime.split(":").map(Number);
 
   return new Date(year, month - 1, day, hours, minutes);
 }
@@ -59,6 +65,9 @@ export default function AppointmentDetailsScreen() {
   }>();
   const numericAppointmentId = Number(appointmentId);
   const { appointments, aptError, isLoadingApt } = useAppointments();
+  const { providers } = useProviders();
+  const { showToast } = useToast();
+  const [isOpeningCalendar, setIsOpeningCalendar] = useState(false);
   const appointment = appointments.find(
     (appointmentItem) => appointmentItem.id === numericAppointmentId,
   );
@@ -80,7 +89,8 @@ export default function AppointmentDetailsScreen() {
         <View style={styles.centeredState}>
           <Text style={styles.stateTitle}>Appointment not available</Text>
           <Text style={styles.stateText}>
-            {aptError || "This appointment could not be found in your schedule."}
+            {aptError ||
+              "This appointment could not be found in your schedule."}
           </Text>
           <HapticButton
             onPress={() => router.replace("/appointments")}
@@ -102,6 +112,27 @@ export default function AppointmentDetailsScreen() {
   const providerLabel =
     appointment.providerType === "clinic" ? "Clinic" : "Provider";
   const isPast = getAppointmentDateTime(appointment) < new Date();
+  const calendarAppointment = appointment;
+  const appointmentProvider = providers.find(
+    (provider) => provider.id === appointment.providerId,
+  );
+
+  async function openCalendarComposer() {
+    try {
+      setIsOpeningCalendar(true);
+      await addAppointmentToCalendar(calendarAppointment, appointmentProvider);
+    } catch (error) {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Unable to open your device calendar",
+        "error",
+      );
+    } finally {
+      setIsOpeningCalendar(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -122,9 +153,7 @@ export default function AppointmentDetailsScreen() {
             />
           </View>
 
-          <Text
-            style={[styles.status, isPast ? styles.statusPast : null]}
-          >
+          <Text style={[styles.status, isPast ? styles.statusPast : null]}>
             {isPast ? "Past appointment" : "Upcoming appointment"}
           </Text>
           <Text style={styles.title}>{appointment.title}</Text>
@@ -139,6 +168,20 @@ export default function AppointmentDetailsScreen() {
             style={styles.editButton}
           >
             <Text style={styles.editButtonText}>Edit Appointment</Text>
+          </HapticButton>
+          <HapticButton
+            disabled={isOpeningCalendar}
+            onPress={openCalendarComposer}
+            style={styles.calendarButton}
+          >
+            <Text style={styles.calendarButtonText}>
+              {isOpeningCalendar ? "Opening Calendar..." : "Add to Calendar"}
+            </Text>
+            <Image
+              contentFit="contain"
+              source={require("../../../assets/arrow-up-right-from-square-solid-full.svg")}
+              style={styles.calendarButtonIcon}
+            />
           </HapticButton>
         </View>
 
@@ -233,7 +276,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   actionRow: {
-    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     paddingHorizontal: 24,
     paddingTop: 22,
   },
@@ -241,15 +285,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.secondary,
     borderRadius: 8,
-    flex: 1,
     justifyContent: "center",
     minHeight: 48,
+    width: "100%",
   },
   editButtonText: {
     color: "#ffffff",
     fontFamily: fonts.body,
     fontSize: 14,
     fontWeight: fontWeights.semibold,
+  },
+  calendarButton: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 7,
+    justifyContent: "center",
+    minHeight: 38,
+    paddingHorizontal: 12,
+  },
+  calendarButtonText: {
+    color: colors.primary,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: fontWeights.semibold,
+  },
+  calendarButtonIcon: {
+    height: 12,
+    tintColor: colors.primary,
+    width: 12,
   },
   section: {
     borderTopColor: "rgba(31, 53, 87, 0.08)",
