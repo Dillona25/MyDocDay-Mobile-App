@@ -1,3 +1,5 @@
+import { formatProviderLocation } from "@/api/providers/provider-location";
+import { useProviders } from "@/hooks/useProviders";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { Appointment } from "@/types/appointment";
@@ -46,6 +48,13 @@ export function AppointmentCard({
   returnTo,
   variant = "full",
 }: AppointmentCardProps) {
+  const { providers } = useProviders();
+  const linkedProvider = providers.find(
+    (provider) => provider.id === appointment.providerId,
+  );
+  const location =
+    appointment.location ||
+    (linkedProvider ? formatProviderLocation(linkedProvider) : null);
   const appointmentTypeLabel =
     appointment.appointmentType === "telehealth" ? "Telehealth" : "In Person";
   const providerLabel =
@@ -168,6 +177,15 @@ export function AppointmentCard({
           <Text style={styles.detailLabel}>{providerLabel}</Text>
           <Text numberOfLines={1} style={styles.detailText}>
             {appointment.doctorName}
+          </Text>
+        </View>
+      ) : null}
+
+      {location ? (
+        <View style={styles.locationSection}>
+          <Text style={styles.detailLabel}>Location</Text>
+          <Text numberOfLines={2} style={styles.locationText}>
+            {location}
           </Text>
         </View>
       ) : null}
@@ -325,5 +343,18 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     marginTop: 16,
     paddingTop: 16,
+  },
+  locationSection: {
+    borderTopColor: "#f1f5f9",
+    borderTopWidth: 1,
+    marginTop: 16,
+    paddingTop: 16,
+  },
+  locationText: {
+    color: "#536173",
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 4,
   },
 });

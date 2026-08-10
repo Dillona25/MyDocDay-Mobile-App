@@ -50,6 +50,7 @@ export default function EditAppointmentScreen() {
           : "",
       providerId: appointment.providerId ? String(appointment.providerId) : "",
       doctorName: appointment.providerId ? "" : (appointment.doctorName ?? ""),
+      location: appointment.location ?? "",
     };
   }, [appointment]);
 
@@ -108,6 +109,7 @@ export default function EditAppointmentScreen() {
             formData.providerSelection === "other"
               ? formData.doctorName.trim()
               : undefined,
+          location: formData.location.trim() || undefined,
         },
         token,
       ]);

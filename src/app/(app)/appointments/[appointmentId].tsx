@@ -1,4 +1,6 @@
 import { addAppointmentToCalendar } from "@/api/appointments/calendar";
+import { openLocationInMaps } from "@/api/appointments/maps";
+import { formatProviderLocation } from "@/api/providers/provider-location";
 import { BackButton } from "@/components/common/BackButton";
 import { HapticButton } from "@/components/common/HapticButton";
 import { useAppointments } from "@/hooks/useAppointments";
@@ -71,6 +73,12 @@ export default function AppointmentDetailsScreen() {
   const appointment = appointments.find(
     (appointmentItem) => appointmentItem.id === numericAppointmentId,
   );
+  const linkedProvider = providers.find(
+    (provider) => provider.id === appointment?.providerId,
+  );
+  const location =
+    appointment?.location ||
+    (linkedProvider ? formatProviderLocation(linkedProvider) : null);
 
   if (isLoadingApt) {
     return (
@@ -112,6 +120,18 @@ export default function AppointmentDetailsScreen() {
   const providerLabel =
     appointment.providerType === "clinic" ? "Clinic" : "Provider";
   const isPast = getAppointmentDateTime(appointment) < new Date();
+
+  async function handleOpenInMaps() {
+    if (!location) {
+      return;
+    }
+
+    try {
+      await openLocationInMaps(location);
+    } catch {
+      showToast("Unable to open this location in Maps.", "error");
+    }
+  }
   const calendarAppointment = appointment;
   const appointmentProvider = providers.find(
     (provider) => provider.id === appointment.providerId,
@@ -169,6 +189,20 @@ export default function AppointmentDetailsScreen() {
           >
             <Text style={styles.editButtonText}>Edit Appointment</Text>
           </HapticButton>
+          {location ? (
+            <HapticButton
+              accessibilityLabel="Open appointment location in Maps"
+              onPress={handleOpenInMaps}
+              style={styles.mapsButton}
+            >
+              <Text style={styles.mapsButtonText}>Open in Maps</Text>
+              <Image
+                contentFit="contain"
+                source={require("../../../assets/arrow-up-right-from-square-solid-full.svg")}
+                style={styles.mapsIcon}
+              />
+            </HapticButton>
+          ) : null}
           <HapticButton
             disabled={isOpeningCalendar}
             onPress={openCalendarComposer}
@@ -202,6 +236,7 @@ export default function AppointmentDetailsScreen() {
             {appointment.doctorName ? (
               <DetailRow label={providerLabel} value={appointment.doctorName} />
             ) : null}
+            {location ? <DetailRow label="Location" value={location} /> : null}
           </View>
         </View>
       </ScrollView>
@@ -288,12 +323,32 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minHeight: 48,
     width: "100%",
+    width: "100%",
   },
   editButtonText: {
     color: "#ffffff",
     fontFamily: fonts.body,
     fontSize: 14,
     fontWeight: fontWeights.semibold,
+  },
+  mapsButton: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 7,
+    justifyContent: "center",
+    minHeight: 36,
+    paddingHorizontal: 10,
+  },
+  mapsButtonText: {
+    color: colors.primary,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: fontWeights.semibold,
+  },
+  mapsIcon: {
+    height: 12,
+    tintColor: colors.primary,
+    width: 12,
   },
   calendarButton: {
     alignItems: "center",

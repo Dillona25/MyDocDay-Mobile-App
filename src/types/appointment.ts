@@ -12,6 +12,7 @@ export type Appointment = {
   appointmentType: AppointmentType;
   doctorName: string | null;
   providerType: ProviderType | null;
+  location: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -28,6 +29,7 @@ export type CreateAppointmentInput = {
   appointmentType: AppointmentType;
   providerId?: number;
   doctorName?: string;
+  location?: string;
 };
 
 export type UpdateAppointmentInput = CreateAppointmentInput & {
