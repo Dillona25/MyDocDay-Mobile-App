@@ -1,4 +1,5 @@
 import { addAppointmentToCalendar } from "@/api/appointments/calendar";
+import { BackButton } from "@/components/common/BackButton";
 import { HapticButton } from "@/components/common/HapticButton";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useProviders } from "@/hooks/useProviders";
@@ -6,9 +7,9 @@ import { useToast } from "@/store/ToastContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { Appointment } from "@/types/appointment";
-import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
-import { router, type Href, useLocalSearchParams } from "expo-router";
+import { Image } from "expo-image";
+import { router, useLocalSearchParams, type Href } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -20,10 +21,11 @@ import {
 } from "react-native";
 
 function getAppointmentDateTime(appointment: Appointment) {
-  const [year, month, day] = appointment.date.slice(0, 10).split("-").map(Number);
-  const [hours = 0, minutes = 0] = appointment.startTime
-    .split(":")
+  const [year, month, day] = appointment.date
+    .slice(0, 10)
+    .split("-")
     .map(Number);
+  const [hours = 0, minutes = 0] = appointment.startTime.split(":").map(Number);
 
   return new Date(year, month - 1, day, hours, minutes);
 }
@@ -57,7 +59,10 @@ function formatAppointmentTime(startTime: string) {
 }
 
 export default function AppointmentDetailsScreen() {
-  const { appointmentId } = useLocalSearchParams<{ appointmentId: string }>();
+  const { appointmentId, returnTo } = useLocalSearchParams<{
+    appointmentId: string;
+    returnTo?: string;
+  }>();
   const numericAppointmentId = Number(appointmentId);
   const { appointments, aptError, isLoadingApt } = useAppointments();
   const { providers } = useProviders();
@@ -84,7 +89,8 @@ export default function AppointmentDetailsScreen() {
         <View style={styles.centeredState}>
           <Text style={styles.stateTitle}>Appointment not available</Text>
           <Text style={styles.stateText}>
-            {aptError || "This appointment could not be found in your schedule."}
+            {aptError ||
+              "This appointment could not be found in your schedule."}
           </Text>
           <HapticButton
             onPress={() => router.replace("/appointments")}
@@ -131,6 +137,12 @@ export default function AppointmentDetailsScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.backNavigation}>
+          <BackButton
+            href={returnTo === "/dashboard" ? "/dashboard" : "/appointments"}
+            navigationMode={returnTo === "/dashboard" ? "navigate" : "dismiss"}
+          />
+        </View>
         <View style={styles.identitySection}>
           <View style={styles.iconFrame}>
             <Image
@@ -141,9 +153,7 @@ export default function AppointmentDetailsScreen() {
             />
           </View>
 
-          <Text
-            style={[styles.status, isPast ? styles.statusPast : null]}
-          >
+          <Text style={[styles.status, isPast ? styles.statusPast : null]}>
             {isPast ? "Past appointment" : "Upcoming appointment"}
           </Text>
           <Text style={styles.title}>{appointment.title}</Text>
@@ -216,10 +226,14 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 40,
   },
+  backNavigation: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
+  },
   identitySection: {
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingTop: 12,
   },
   iconFrame: {
     alignItems: "center",

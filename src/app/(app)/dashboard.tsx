@@ -40,7 +40,10 @@ export default function DashboardScreen() {
                   !error &&
                   visibleProviders.map((provider) => (
                     <View key={provider.id} style={styles.providerContainer}>
-                      <ProviderWidget provider={provider} />
+                      <ProviderWidget
+                        provider={provider}
+                        returnTo="/dashboard"
+                      />
                     </View>
                   ))}
               </View>

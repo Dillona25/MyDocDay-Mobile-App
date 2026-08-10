@@ -3,7 +3,7 @@ import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
-import { Redirect, Tabs } from "expo-router";
+import { Redirect, router, Tabs } from "expo-router";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 type TabIconName =
@@ -59,6 +59,12 @@ export default function AppLayout() {
       />
       <Tabs.Screen
         name="appointments"
+        listeners={{
+          tabPress: (event) => {
+            event.preventDefault();
+            router.navigate("/appointments");
+          },
+        }}
         options={{
           popToTopOnBlur: true,
           title: "Appointments",
@@ -78,6 +84,12 @@ export default function AppLayout() {
       />
       <Tabs.Screen
         name="providers"
+        listeners={{
+          tabPress: (event) => {
+            event.preventDefault();
+            router.navigate("/providers");
+          },
+        }}
         options={{
           popToTopOnBlur: true,
           title: "Providers",
