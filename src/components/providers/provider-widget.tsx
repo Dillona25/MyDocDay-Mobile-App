@@ -9,12 +9,14 @@ import { HapticButton } from "../common/HapticButton";
 type ProviderWidgetProps = {
   provider: Provider;
   onDelete?: () => void;
+  returnTo?: string;
   variant?: "compact" | "full";
 };
 
 export function ProviderWidget({
   provider,
   onDelete,
+  returnTo,
   variant = "compact",
 }: ProviderWidgetProps) {
   const displayName =
@@ -35,9 +37,20 @@ export function ProviderWidget({
     <HapticButton
       accessibilityLabel={`View ${displayName}`}
       accessibilityRole="button"
-      onPress={() =>
-        router.push(`/providers/${provider.id}` as Href)
-      }
+      onPress={() => {
+        if (returnTo) {
+          router.push({
+            pathname: "/providers/[providerId]",
+            params: {
+              providerId: provider.id,
+              returnTo,
+            },
+          });
+          return;
+        }
+
+        router.push(`/providers/${provider.id}` as Href);
+      }}
       style={({ pressed }) => [
         styles.card,
         variant === "full" ? styles.fullCard : null,

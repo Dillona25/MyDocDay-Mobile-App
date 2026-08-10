@@ -35,13 +35,8 @@ export async function updateUserProfile(
   return data as UserProfileResponse;
 }
 
-export async function uploadUserProfileImage(
-  imageUri: string,
-  token: string,
-) {
+export async function uploadUserProfileImage(imageUri: string, token: string) {
   const formData = new FormData();
-
-  // React Native uploads local files through a URI-backed multipart entry.
   formData.append("avatar", {
     uri: imageUri,
     name: "profile.jpg",

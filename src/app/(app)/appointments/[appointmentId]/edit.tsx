@@ -1,5 +1,6 @@
 import AddAppointmentForm from "@/components/appointments/add-appointment-form";
 import { DeleteAppointmentModal } from "@/components/appointments/delete-appointment-modal";
+import { BackButton } from "@/components/common/BackButton";
 import { HapticButton } from "@/components/common/HapticButton";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useDeleteAppointment } from "@/hooks/useDeleteAppointment";
@@ -161,6 +162,11 @@ export default function EditAppointmentScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.content}>
+        <View style={styles.backButton}>
+          <BackButton
+            href={`/appointments/${numericAppointmentId}` as Href}
+          />
+        </View>
         <View style={styles.header}>
           <Text style={styles.eyebrow}>Appointments</Text>
           <Text style={styles.title}>Edit Appointment</Text>
@@ -215,6 +221,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 24,
+  },
+  backButton: {
+    marginBottom: 12,
   },
   header: {
     gap: 8,

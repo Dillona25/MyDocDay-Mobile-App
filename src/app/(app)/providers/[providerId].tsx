@@ -1,4 +1,5 @@
 import { AppointmentCard } from "@/components/appointments/appointment-card";
+import { BackButton } from "@/components/common/BackButton";
 import { HapticButton } from "@/components/common/HapticButton";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useProviders } from "@/hooks/useProviders";
@@ -39,7 +40,10 @@ function getAppointmentDateTime(appointment: Appointment) {
 }
 
 export default function ProviderDetailsScreen() {
-  const { providerId } = useLocalSearchParams<{ providerId: string }>();
+  const { providerId, returnTo } = useLocalSearchParams<{
+    providerId: string;
+    returnTo?: string;
+  }>();
   const numericProviderId = Number(providerId);
   const { error, isLoading, providers } = useProviders();
   const {
@@ -152,7 +156,10 @@ export default function ProviderDetailsScreen() {
           <Text style={styles.stateText}>
             {error || "This provider could not be found in your care team."}
           </Text>
-          <HapticButton onPress={() => router.back()} style={styles.returnButton}>
+          <HapticButton
+            onPress={() => router.dismissTo("/providers")}
+            style={styles.returnButton}
+          >
             <Text style={styles.returnButtonText}>Return to providers</Text>
           </HapticButton>
         </View>
@@ -181,6 +188,12 @@ export default function ProviderDetailsScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.backNavigation}>
+          <BackButton
+            href={returnTo === "/dashboard" ? "/dashboard" : "/providers"}
+            navigationMode={returnTo === "/dashboard" ? "navigate" : "dismiss"}
+          />
+        </View>
         <View style={styles.identitySection}>
           {provider.imageUrl ? (
             <Image
@@ -384,10 +397,14 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 40,
   },
+  backNavigation: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
+  },
   identitySection: {
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingTop: 12,
   },
   avatar: {
     borderRadius: 8,

@@ -132,6 +132,7 @@ export function AppointmentWidget() {
             <AppointmentCard
               appointment={appointment}
               key={appointment.id}
+              returnTo="/dashboard"
               variant="compact"
             />
           ))}
