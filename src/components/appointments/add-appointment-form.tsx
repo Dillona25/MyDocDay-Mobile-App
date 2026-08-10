@@ -4,6 +4,7 @@ import { useCreateAppointment } from "@/hooks/useCreateAppointment";
 import { useProviders } from "@/hooks/useProviders";
 import { useAuth } from "@/store/auth/AuthContext";
 import { useToast } from "@/store/ToastContext";
+import { buttonDisabled } from "@/theme/buttons";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import {
@@ -19,10 +20,7 @@ import {
   submitButtonText,
   textInput,
 } from "@/theme/forms";
-import type {
-  AppointmentFormData,
-  AppointmentProviderSelection,
-} from "@/types/appointment-form";
+import type { AppointmentFormData } from "@/types/appointment-form";
 import DateTimePicker, {
   DateTimePickerAndroid,
   type DateTimePickerEvent,
@@ -31,6 +29,12 @@ import { Picker } from "@react-native-picker/picker";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect } from "expo-router";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
+import {
+  Controller,
+  type Control,
+  type ControllerProps,
+  useForm,
+} from "react-hook-form";
 import {
   Platform,
   ScrollView,
@@ -52,6 +56,8 @@ type ActivePicker = "date" | "time" | null;
 
 const minimumAppointmentDate = new Date(1900, 0, 1);
 const maximumAppointmentDate = new Date(2100, 11, 31);
+const appointmentDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+const appointmentTimeRegex = /^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/;
 
 function formatDateForApi(date: Date) {
   return [
@@ -140,8 +146,25 @@ export default function AddAppointmentForm({
   const [selectedTime, setSelectedTime] = useState(() =>
     parseAppointmentTime(resolvedInitialData.startTime),
   );
-  const [formData, setFormData] = useState(resolvedInitialData);
-  const selectedProviderMode = formData.providerSelection;
+  const {
+    control,
+    handleSubmit,
+    reset,
+    setValue,
+    trigger,
+    watch,
+    formState: { isSubmitting, isValid },
+  } = useForm<AppointmentFormData>({
+    defaultValues: resolvedInitialData,
+    mode: "onChange",
+  });
+  const selectedProviderMode = watch("providerSelection");
+  const selectedProviderId = watch("providerId");
+  const selectedAppointmentType = watch("appointmentType");
+
+  useEffect(() => {
+    void trigger(["providerId", "doctorName"]);
+  }, [selectedProviderMode, trigger]);
 
   useFocusEffect(
     useCallback(() => {
@@ -158,39 +181,31 @@ export default function AddAppointmentForm({
         setSelectedDate(nextDate);
         setSelectedTime(nextTime);
         setActivePicker(null);
-        setFormData(
+        reset(
           mode === "edit"
             ? resolvedInitialData
             : createInitialAppointmentFormData(nextDate),
         );
       };
-    }, [mode, resolvedInitialData]),
+    }, [mode, reset, resolvedInitialData]),
   );
-
-  function updateField(fieldName: keyof AppointmentFormData, value: string) {
-    setFormData((currentFormData) => ({
-      ...currentFormData,
-      [fieldName]: value,
-    }));
-  }
-
-  function chooseProviderMode(mode: AppointmentProviderSelection) {
-    setFormData((currentFormData) => ({
-      ...currentFormData,
-      providerSelection: mode,
-      providerId: "",
-      doctorName: "",
-    }));
-  }
 
   function updateSelectedDate(date: Date) {
     setSelectedDate(date);
-    updateField("date", formatDateForApi(date));
+    setValue("date", formatDateForApi(date), {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
   }
 
   function updateSelectedTime(date: Date) {
     setSelectedTime(date);
-    updateField("startTime", formatTimeForApi(date));
+    setValue("startTime", formatTimeForApi(date), {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
   }
 
   function openPicker(mode: Exclude<ActivePicker, null>) {
@@ -224,8 +239,10 @@ export default function AddAppointmentForm({
   }
 
   async function onSubmitPress(formData: AppointmentFormData) {
+    const normalizedFormData = normalizeAppointmentFormData(formData);
+
     if (mode === "edit") {
-      await onEditSubmit?.(formData);
+      await onEditSubmit?.(normalizedFormData);
       return;
     }
 
@@ -236,17 +253,19 @@ export default function AddAppointmentForm({
     try {
       await createAppointmentMutation.mutateAsync([
         {
-          title: formData.title,
-          date: formData.date,
-          startTime: formData.startTime,
-          appointmentType: formData.appointmentType || "in_person",
+          title: normalizedFormData.title,
+          date: normalizedFormData.date,
+          startTime: normalizedFormData.startTime,
+          appointmentType:
+            normalizedFormData.appointmentType || "in_person",
           providerId:
-            formData.providerSelection === "saved" && formData.providerId
-              ? Number(formData.providerId)
+            normalizedFormData.providerSelection === "saved" &&
+            normalizedFormData.providerId
+              ? Number(normalizedFormData.providerId)
               : undefined,
           doctorName:
-            formData.providerSelection === otherDoctorValue
-              ? formData.doctorName
+            normalizedFormData.providerSelection === otherDoctorValue
+              ? normalizedFormData.doctorName
               : undefined,
         },
         token,
@@ -259,7 +278,7 @@ export default function AddAppointmentForm({
       setSelectedDate(nextDate);
       setSelectedTime(nextDate);
       setActivePicker(null);
-      setFormData(createInitialAppointmentFormData(nextDate));
+      reset(createInitialAppointmentFormData(nextDate));
     } catch (requestError) {
       console.log(requestError);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -275,25 +294,66 @@ export default function AddAppointmentForm({
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      <FloatingInput
+      <ControlledFloatingInput
+        control={control}
         labelText="Appointment Title"
-        onChangeText={(value) => updateField("title", value)}
-        value={formData.title}
+        name="title"
+        required
+        rules={{
+          maxLength: {
+            value: 150,
+            message: "Title cannot exceed 150 characters.",
+          },
+          validate: (value) =>
+            value.trim().length >= 2 || "Enter at least 2 characters.",
+        }}
       />
 
       <View style={styles.dateTimeGroup}>
         <View style={styles.dateTimeRow}>
-          <DateTimeTrigger
-            displayValue={formatDateForDisplay(selectedDate)}
-            isActive={activePicker === "date"}
-            labelText="Date"
-            onPress={() => openPicker("date")}
+          <Controller
+            control={control}
+            name="date"
+            rules={{
+              required: "Date is required.",
+              validate: (value) =>
+                isValidAppointmentDate(value) || "Choose a valid date.",
+            }}
+            render={({ fieldState }) => (
+              <DateTimeTrigger
+                displayValue={formatDateForDisplay(selectedDate)}
+                errorMessage={
+                  fieldState.isTouched ? fieldState.error?.message : undefined
+                }
+                isActive={activePicker === "date"}
+                labelText="Date"
+                onPress={() => openPicker("date")}
+                required
+              />
+            )}
           />
-          <DateTimeTrigger
-            displayValue={formatTimeForDisplay(selectedTime)}
-            isActive={activePicker === "time"}
-            labelText="Start Time"
-            onPress={() => openPicker("time")}
+          <Controller
+            control={control}
+            name="startTime"
+            rules={{
+              required: "Start time is required.",
+              pattern: {
+                value: appointmentTimeRegex,
+                message: "Choose a valid start time.",
+              },
+            }}
+            render={({ fieldState }) => (
+              <DateTimeTrigger
+                displayValue={formatTimeForDisplay(selectedTime)}
+                errorMessage={
+                  fieldState.isTouched ? fieldState.error?.message : undefined
+                }
+                isActive={activePicker === "time"}
+                labelText="Start Time"
+                onPress={() => openPicker("time")}
+                required
+              />
+            )}
           />
         </View>
 
@@ -320,57 +380,88 @@ export default function AddAppointmentForm({
         ) : null}
       </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.groupLabel}>Appointment Type</Text>
-        <View style={segmentedRow}>
-          {appointmentTypes.map((typeOption) => {
-            const isActive = formData.appointmentType === typeOption.value;
+      <Controller
+        control={control}
+        name="appointmentType"
+        rules={{ required: "Choose an appointment type." }}
+        render={({ field: typeField, fieldState }) => (
+          <View style={styles.fieldGroup}>
+            <RequiredLabel>Appointment Type</RequiredLabel>
+            <View style={segmentedRow}>
+              {appointmentTypes.map((typeOption) => {
+                const isActive = selectedAppointmentType === typeOption.value;
 
-            return (
-              <HapticButton
-                key={typeOption.value}
-                onPress={() => updateField("appointmentType", typeOption.value)}
-                style={[optionButton, isActive ? optionButtonActive : null]}
-              >
-                <Text
-                  style={[
-                    optionButtonText,
-                    isActive ? optionButtonTextActive : null,
-                  ]}
-                >
-                  {typeOption.label}
-                </Text>
-              </HapticButton>
-            );
-          })}
-        </View>
-      </View>
+                return (
+                  <HapticButton
+                    key={typeOption.value}
+                    onPress={() => typeField.onChange(typeOption.value)}
+                    style={[optionButton, isActive ? optionButtonActive : null]}
+                  >
+                    <Text
+                      style={[
+                        optionButtonText,
+                        isActive ? optionButtonTextActive : null,
+                      ]}
+                    >
+                      {typeOption.label}
+                    </Text>
+                  </HapticButton>
+                );
+              })}
+            </View>
+            {fieldState.isTouched && fieldState.error ? (
+              <Text style={styles.errorText}>{fieldState.error.message}</Text>
+            ) : null}
+          </View>
+        )}
+      />
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.groupLabel}>Which Provider or Clinic?</Text>
-        <View style={segmentedRow}>
-          {providerOptions.map((providerOption) => {
-            const isActive = selectedProviderMode === providerOption.value;
+      <Controller
+        control={control}
+        name="providerSelection"
+        rules={{ required: "Choose how to add the provider." }}
+        render={({ field: selectionField, fieldState }) => (
+          <View style={styles.fieldGroup}>
+            <RequiredLabel>Which Provider or Clinic?</RequiredLabel>
+            <View style={segmentedRow}>
+              {providerOptions.map((providerOption) => {
+                const isActive =
+                  selectedProviderMode === providerOption.value;
 
-            return (
-              <HapticButton
-                key={providerOption.value}
-                onPress={() => chooseProviderMode(providerOption.value)}
-                style={[optionButton, isActive ? optionButtonActive : null]}
-              >
-                <Text
-                  style={[
-                    optionButtonText,
-                    isActive ? optionButtonTextActive : null,
-                  ]}
-                >
-                  {providerOption.label}
-                </Text>
-              </HapticButton>
-            );
-          })}
-        </View>
-      </View>
+                return (
+                  <HapticButton
+                    key={providerOption.value}
+                    onPress={() => {
+                      selectionField.onChange(providerOption.value);
+                      setValue("providerId", "", {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                      setValue("doctorName", "", {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                    }}
+                    style={[optionButton, isActive ? optionButtonActive : null]}
+                  >
+                    <Text
+                      style={[
+                        optionButtonText,
+                        isActive ? optionButtonTextActive : null,
+                      ]}
+                    >
+                      {providerOption.label}
+                    </Text>
+                  </HapticButton>
+                );
+              })}
+            </View>
+            {fieldState.isTouched && fieldState.error ? (
+              <Text style={styles.errorText}>{fieldState.error.message}</Text>
+            ) : null}
+          </View>
+        )}
+      />
 
       {selectedProviderMode === "saved" ? (
         <View style={styles.savedProviderList}>
@@ -383,74 +474,119 @@ export default function AddAppointmentForm({
               No saved providers yet. Choose Different Provider for now.
             </Text>
           ) : null}
-          {providers.map((provider) => {
-            const providerId = String(provider.id);
-            const isActive = formData.providerId === providerId;
-            const displayName =
-              provider.type === "clinic"
-                ? (provider.clinicName ?? "Clinic")
-                : [provider.firstName, provider.lastName]
-                    .filter(Boolean)
-                    .join(" ");
-            const providerLabel =
-              provider.type === "clinic" ? "Clinic" : "Provider";
+          <Controller
+            control={control}
+            name="providerId"
+            rules={{
+              validate: (value) =>
+                selectedProviderMode !== "saved" ||
+                (Number.isInteger(Number(value)) && Number(value) > 0) ||
+                "Choose a saved provider.",
+            }}
+            render={({ field: providerField, fieldState }) => (
+              <>
+                {providers.map((provider) => {
+                  const providerId = String(provider.id);
+                  const isActive = selectedProviderId === providerId;
+                  const displayName =
+                    provider.type === "clinic"
+                      ? (provider.clinicName ?? "Clinic")
+                      : [provider.firstName, provider.lastName]
+                          .filter(Boolean)
+                          .join(" ");
+                  const providerLabel =
+                    provider.type === "clinic" ? "Clinic" : "Provider";
 
-            return (
-              <HapticButton
-                key={provider.id}
-                onPress={() => updateField("providerId", providerId)}
-                style={[
-                  styles.providerOption,
-                  isActive ? styles.providerOptionActive : null,
-                ]}
-              >
-                <View style={styles.providerOptionContent}>
-                  <Text
-                    numberOfLines={1}
-                    style={[
-                      styles.providerName,
-                      isActive ? styles.providerNameActive : null,
-                    ]}
-                  >
-                    {displayName}
+                  return (
+                    <HapticButton
+                      key={provider.id}
+                      onPress={() => {
+                        providerField.onChange(providerId);
+                        providerField.onBlur();
+                      }}
+                      style={[
+                        styles.providerOption,
+                        isActive ? styles.providerOptionActive : null,
+                      ]}
+                    >
+                      <View style={styles.providerOptionContent}>
+                        <Text
+                          numberOfLines={1}
+                          style={[
+                            styles.providerName,
+                            isActive ? styles.providerNameActive : null,
+                          ]}
+                        >
+                          {displayName}
+                        </Text>
+                        <Text
+                          numberOfLines={1}
+                          style={[
+                            styles.providerMeta,
+                            isActive ? styles.providerMetaActive : null,
+                          ]}
+                        >
+                          {providerLabel}
+                          {provider.specialty
+                            ? ` - ${provider.specialty}`
+                            : ""}
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.providerRadio,
+                          isActive ? styles.providerRadioActive : null,
+                        ]}
+                      />
+                    </HapticButton>
+                  );
+                })}
+                {fieldState.isTouched && fieldState.error ? (
+                  <Text style={styles.errorText}>
+                    {fieldState.error.message}
                   </Text>
-                  <Text
-                    numberOfLines={1}
-                    style={[
-                      styles.providerMeta,
-                      isActive ? styles.providerMetaActive : null,
-                    ]}
-                  >
-                    {providerLabel}
-                    {provider.specialty ? ` - ${provider.specialty}` : ""}
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.providerRadio,
-                    isActive ? styles.providerRadioActive : null,
-                  ]}
-                />
-              </HapticButton>
-            );
-          })}
+                ) : null}
+              </>
+            )}
+          />
         </View>
       ) : null}
 
       {selectedProviderMode === otherDoctorValue ? (
-        <FloatingInput
+        <ControlledFloatingInput
+          control={control}
           labelText="Provider or Clinic Name"
-          onChangeText={(value) => updateField("doctorName", value)}
-          value={formData.doctorName}
+          name="doctorName"
+          required
+          rules={{
+            maxLength: {
+              value: 200,
+              message: "Name cannot exceed 200 characters.",
+            },
+            validate: (value) =>
+              selectedProviderMode !== otherDoctorValue ||
+              value.trim().length > 0 ||
+              "Provider or clinic name is required.",
+          }}
         />
       ) : null}
 
       <HapticButton
-        onPress={() => onSubmitPress(formData)}
-        style={submitButton}
+        disabled={!isValid || isSubmitting}
+        onPress={handleSubmit(onSubmitPress)}
+        style={[
+          submitButton,
+          !isValid || isSubmitting ? buttonDisabled : null,
+        ]}
       >
         <Text style={submitButtonText}>
-          {mode === "edit" ? "Save Changes" : "Add Appointment"}
+          {isSubmitting
+            ? mode === "edit"
+              ? "Saving Changes..."
+              : "Adding Appointment..."
+            : mode === "edit"
+              ? "Save Changes"
+              : "Add Appointment"}
         </Text>
       </HapticButton>
 
@@ -459,59 +595,103 @@ export default function AddAppointmentForm({
   );
 }
 
-type FloatingInputProps = {
+type ControlledFloatingInputProps = {
+  control: Control<AppointmentFormData>;
   labelText: string;
-  value: string;
-  onChangeText: (value: string) => void;
+  name: keyof AppointmentFormData;
   placeholder?: string;
+  required?: boolean;
+  rules?: ControllerProps<AppointmentFormData>["rules"];
 };
 
-function FloatingInput({
+function ControlledFloatingInput({
+  control,
   labelText,
-  onChangeText,
+  name,
   placeholder,
-  value,
-}: FloatingInputProps) {
+  required = false,
+  rules,
+}: ControlledFloatingInputProps) {
   return (
-    <View style={[field, fieldStack]}>
-      <Text style={label}>{labelText}</Text>
-      <TextInput
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor="#8a96a8"
-        style={textInput}
-        value={value}
-      />
-    </View>
+    <Controller
+      control={control}
+      name={name}
+      rules={rules}
+      render={({ field: inputField, fieldState }) => (
+        <View style={[field, fieldStack]}>
+          <Text style={label}>
+            {labelText}
+            {required ? <Text style={styles.requiredIndicator}> *</Text> : null}
+          </Text>
+          <TextInput
+            onBlur={inputField.onBlur}
+            onChangeText={inputField.onChange}
+            placeholder={placeholder}
+            placeholderTextColor="#8a96a8"
+            ref={inputField.ref}
+            style={[
+              textInput,
+              fieldState.isTouched && fieldState.invalid
+                ? styles.inputError
+                : null,
+            ]}
+            value={inputField.value}
+          />
+          {fieldState.isTouched && fieldState.error ? (
+            <Text style={styles.errorText}>{fieldState.error.message}</Text>
+          ) : null}
+        </View>
+      )}
+    />
   );
 }
 
 type DateTimeTriggerProps = {
   labelText: string;
   displayValue: string;
+  errorMessage?: string;
   isActive: boolean;
   onPress: () => void;
+  required?: boolean;
 };
 
 function DateTimeTrigger({
   displayValue,
+  errorMessage,
   isActive,
   labelText,
   onPress,
+  required = false,
 }: DateTimeTriggerProps) {
   return (
     <View style={[field, fieldStack]}>
-      <Text style={label}>{labelText}</Text>
+      <Text style={label}>
+        {labelText}
+        {required ? <Text style={styles.requiredIndicator}> *</Text> : null}
+      </Text>
       <HapticButton
         onPress={onPress}
         style={[
           styles.pickerTrigger,
           isActive ? styles.pickerTriggerActive : null,
+          errorMessage ? styles.inputError : null,
         ]}
       >
         <Text style={styles.pickerTriggerText}>{displayValue}</Text>
       </HapticButton>
+      {errorMessage ? (
+        <Text style={styles.errorText}>{errorMessage}</Text>
+      ) : null}
     </View>
+  );
+}
+
+function RequiredLabel({ children }: { children: ReactNode }) {
+  return (
+    <Text style={styles.groupLabel}>
+      {children}
+      <Text style={styles.requiredIndicator}> *</Text>
+    </Text>
   );
 }
 
@@ -643,6 +823,37 @@ function TimeWheelPicker({
   );
 }
 
+function isValidAppointmentDate(value: string) {
+  if (!appointmentDateRegex.test(value)) {
+    return false;
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+}
+
+function normalizeAppointmentFormData(
+  formData: AppointmentFormData,
+): AppointmentFormData {
+  const usesSavedProvider = formData.providerSelection === "saved";
+
+  return {
+    title: formData.title.trim(),
+    date: formData.date.slice(0, 10),
+    startTime: formData.startTime.slice(0, 5),
+    appointmentType: formData.appointmentType,
+    providerSelection: formData.providerSelection,
+    providerId: usesSavedProvider ? formData.providerId : "",
+    doctorName: usesSavedProvider ? "" : formData.doctorName.trim(),
+  };
+}
+
 const styles = StyleSheet.create({
   form: {
     gap: 18,
@@ -756,5 +967,17 @@ const styles = StyleSheet.create({
   providerRadioActive: {
     backgroundColor: colors.secondary,
     borderColor: colors.secondary,
+  },
+  requiredIndicator: {
+    color: "#d24747",
+  },
+  inputError: {
+    borderColor: "#d24747",
+  },
+  errorText: {
+    color: "#d24747",
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 17,
   },
 });

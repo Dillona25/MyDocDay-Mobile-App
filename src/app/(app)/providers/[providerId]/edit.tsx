@@ -5,6 +5,7 @@ import { useAppointments } from "@/hooks/useAppointments";
 import { useDeleteProvider } from "@/hooks/useDeleteProvider";
 import { useProviders } from "@/hooks/useProviders";
 import { useUpdateProvider } from "@/hooks/useUpdateProvider";
+import { getFullStateName } from "@/data/usStates";
 import { useToast } from "@/store/ToastContext";
 import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
@@ -49,7 +50,7 @@ export default function EditProviderScreen() {
       imageUrl: provider.imageUrl ?? "",
       streetAddress: provider.streetAddress ?? "",
       city: provider.city ?? "",
-      state: provider.state ?? "",
+      state: getFullStateName(provider.state ?? ""),
       zipCode: provider.zipCode ?? "",
     };
   }, [provider]);

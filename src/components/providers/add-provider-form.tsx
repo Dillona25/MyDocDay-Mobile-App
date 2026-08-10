@@ -1,7 +1,13 @@
+import { HapticButton } from "@/components/common/HapticButton";
+import { PickerModal } from "@/components/common/PickerModal";
 import { providerTypes } from "@/data/providerTypes";
+import { usStates } from "@/data/usStates";
 import { useCreateProvider } from "@/hooks/useCreateProvider";
 import { useAuth } from "@/store/auth/AuthContext";
 import { useToast } from "@/store/ToastContext";
+import { buttonDisabled } from "@/theme/buttons";
+import { colors } from "@/theme/colors";
+import { fonts, fontWeights } from "@/theme/fonts";
 import {
   field,
   fieldStack,
@@ -16,11 +22,20 @@ import {
   textInput,
 } from "@/theme/forms";
 import type { ProviderFormData } from "@/types/provider-form";
+import { Picker } from "@react-native-picker/picker";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect } from "expo-router";
-import { type ReactNode, useCallback, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
+import {
+  Controller,
+  type Control,
+  type ControllerProps,
+  useForm,
+} from "react-hook-form";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { HapticButton } from "../common/HapticButton";
+
+const phoneNumberRegex = /^\(\d{3}\) \d{3}-\d{4}$/;
+const zipCodeRegex = /^\d{5}$/;
 
 export const initialProviderFormData: ProviderFormData = {
   firstName: "",
@@ -49,30 +64,46 @@ export default function AddProviderForm({
   mode = "create",
   onEditSubmit,
 }: AddProviderFormProps) {
-  const [formData, setFormData] = useState(initialData);
-  const providerType = formData.type;
+  const formDefaults = getProviderFormDefaults(initialData);
   const { token } = useAuth();
   const createProviderMutation = useCreateProvider();
   const { showToast } = useToast();
+  const [showStatePicker, setShowStatePicker] = useState(false);
+  const [draftState, setDraftState] = useState(formDefaults.state);
+  const {
+    control,
+    handleSubmit,
+    reset,
+    trigger,
+    watch,
+    formState: { isSubmitting, isValid },
+  } = useForm<ProviderFormData>({
+    defaultValues: formDefaults,
+    mode: "onChange",
+  });
+  const providerType = watch("type");
+
+  useEffect(() => {
+    void trigger(["firstName", "lastName", "clinicName", "specialty"]);
+  }, [providerType, trigger]);
 
   useFocusEffect(
     useCallback(() => {
       return () => {
-        setFormData(initialData);
+        const resetValues = getProviderFormDefaults(initialData);
+
+        reset(resetValues);
+        setDraftState(resetValues.state);
+        setShowStatePicker(false);
       };
-    }, [initialData]),
+    }, [initialData, reset]),
   );
 
-  function updateField(fieldName: keyof ProviderFormData, value: string) {
-    setFormData((currentFormData) => ({
-      ...currentFormData,
-      [fieldName]: value,
-    }));
-  }
-
   async function onSubmitPress(formData: ProviderFormData) {
+    const normalizedFormData = normalizeProviderFormData(formData);
+
     if (mode === "edit") {
-      await onEditSubmit?.(formData);
+      await onEditSubmit?.(normalizedFormData);
       return;
     }
 
@@ -83,18 +114,16 @@ export default function AddProviderForm({
     try {
       await createProviderMutation.mutateAsync([
         {
-          ...formData,
-          type: formData.type || "provider",
-          firstName: formData.type === "provider" ? formData.firstName : "",
-          lastName: formData.type === "provider" ? formData.lastName : "",
-          clinicName: formData.type === "clinic" ? formData.clinicName : "",
+          ...normalizedFormData,
+          type: normalizedFormData.type || "provider",
         },
         token,
       ]);
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast("Provider added successfully", "success");
-      setFormData(initialProviderFormData);
+      reset(initialProviderFormData);
+      setDraftState("");
     } catch (error) {
       console.log(error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -110,124 +139,264 @@ export default function AddProviderForm({
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.fieldGroup}>
-        <Text style={styles.groupLabel}>Is this a provider or clinic?</Text>
-        <View style={segmentedRow}>
-          {providerTypes.map((typeOption) => {
-            const isActive = providerType === typeOption.value;
+      <Controller
+        control={control}
+        name="type"
+        rules={{ required: "Choose provider or clinic." }}
+        render={({ field: typeField, fieldState }) => (
+          <View style={styles.fieldGroup}>
+            <RequiredLabel style={styles.groupLabel}>
+              Is this a provider or clinic?
+            </RequiredLabel>
+            <View style={segmentedRow}>
+              {providerTypes.map((typeOption) => {
+                const isActive = providerType === typeOption.value;
 
-            return (
-              <HapticButton
-                key={typeOption.value}
-                onPress={() => updateField("type", typeOption.value)}
-                style={[optionButton, isActive ? optionButtonActive : null]}
-              >
-                <Text
-                  style={[
-                    optionButtonText,
-                    isActive ? optionButtonTextActive : null,
-                  ]}
-                >
-                  {typeOption.label}
-                </Text>
-              </HapticButton>
-            );
-          })}
-        </View>
-      </View>
+                return (
+                  <HapticButton
+                    key={typeOption.value}
+                    onPress={() => typeField.onChange(typeOption.value)}
+                    style={[optionButton, isActive ? optionButtonActive : null]}
+                  >
+                    <Text
+                      style={[
+                        optionButtonText,
+                        isActive ? optionButtonTextActive : null,
+                      ]}
+                    >
+                      {typeOption.label}
+                    </Text>
+                  </HapticButton>
+                );
+              })}
+            </View>
+            {fieldState.isTouched && fieldState.error ? (
+              <Text style={styles.errorText}>{fieldState.error.message}</Text>
+            ) : null}
+          </View>
+        )}
+      />
 
       {providerType === "provider" ? (
         <View style={styles.fieldsRow}>
-          <FloatingInput
+          <ControlledFloatingInput
+            control={control}
             labelText="First Name"
-            onChangeText={(value) => updateField("firstName", value)}
-            value={formData.firstName}
+            name="firstName"
+            required
+            rules={{
+              maxLength: {
+                value: 100,
+                message: "First name cannot exceed 100 characters.",
+              },
+              validate: (value) =>
+                providerType !== "provider" ||
+                value.trim().length >= 2 ||
+                "Enter at least 2 characters.",
+            }}
           />
-          <FloatingInput
+          <ControlledFloatingInput
+            control={control}
             labelText="Last Name"
-            onChangeText={(value) => updateField("lastName", value)}
-            value={formData.lastName}
+            name="lastName"
+            required
+            rules={{
+              maxLength: {
+                value: 100,
+                message: "Last name cannot exceed 100 characters.",
+              },
+              validate: (value) =>
+                providerType !== "provider" ||
+                value.trim().length >= 2 ||
+                "Enter at least 2 characters.",
+            }}
           />
         </View>
       ) : null}
 
       {providerType === "clinic" ? (
-        <FloatingInput
+        <ControlledFloatingInput
+          control={control}
           labelText="Clinic Name"
-          onChangeText={(value) => updateField("clinicName", value)}
-          value={formData.clinicName}
+          name="clinicName"
+          required
+          rules={{
+            maxLength: {
+              value: 200,
+              message: "Clinic name cannot exceed 200 characters.",
+            },
+            validate: (value) =>
+              providerType !== "clinic" ||
+              value.trim().length >= 2 ||
+              "Enter at least 2 characters.",
+          }}
         />
       ) : null}
 
       {providerType ? (
         <>
           <View style={styles.fieldsRow}>
-            <FloatingInput
+            <ControlledFloatingInput
+              control={control}
               labelText={
                 providerType === "clinic" ? "Clinic Type" : "Provider Specialty"
               }
-              onChangeText={(value) => updateField("specialty", value)}
-              value={formData.specialty}
+              name="specialty"
+              required
+              rules={{
+                maxLength: {
+                  value: 150,
+                  message: "Specialty cannot exceed 150 characters.",
+                },
+                validate: (value) =>
+                  value.trim().length >= 2 || "Enter at least 2 characters.",
+              }}
             />
-            <FloatingInput
+            <ControlledFloatingInput
+              control={control}
               keyboardType="phone-pad"
               labelText="Phone Number"
-              onChangeText={(value) => updateField("phoneNumber", value)}
-              value={formData.phoneNumber}
+              name="phoneNumber"
+              placeholder="(555) 123-4567"
+              rules={{
+                validate: (value) =>
+                  !value ||
+                  phoneNumberRegex.test(value) ||
+                  "Use format (555) 123-4567.",
+              }}
+              transformValue={formatPhoneNumber}
             />
           </View>
 
-          <FloatingInput
+          <ControlledFloatingInput
             autoCapitalize="none"
+            control={control}
             labelText={
               providerType === "clinic"
                 ? "Clinic Image URL"
                 : "Provider Image URL"
             }
-            onChangeText={(value) => updateField("imageUrl", value)}
-            placeholder="Google image link"
-            value={formData.imageUrl}
+            name="imageUrl"
+            placeholder="https://example.com/image.jpg"
+            rules={{
+              validate: (value) =>
+                isValidImageUrl(value) || "Enter a valid image URL.",
+            }}
           />
 
           {providerType === "clinic" ? (
             <>
-              <FloatingInput
+              <ControlledFloatingInput
+                control={control}
                 labelText="Street Address"
-                onChangeText={(value) => updateField("streetAddress", value)}
-                value={formData.streetAddress}
+                name="streetAddress"
+                rules={{
+                  maxLength: {
+                    value: 255,
+                    message: "Address cannot exceed 255 characters.",
+                  },
+                }}
               />
 
               <View style={styles.fieldsRow}>
-                <FloatingInput
+                <ControlledFloatingInput
+                  control={control}
                   labelText="City"
-                  onChangeText={(value) => updateField("city", value)}
-                  value={formData.city}
+                  name="city"
+                  rules={{
+                    maxLength: {
+                      value: 100,
+                      message: "City cannot exceed 100 characters.",
+                    },
+                  }}
                 />
-                <FloatingInput
-                  labelText="State"
-                  onChangeText={(value) => updateField("state", value)}
-                  placeholder="Ex. CA"
-                  value={formData.state}
+                <Controller
+                  control={control}
+                  name="state"
+                  rules={{
+                    maxLength: {
+                      value: 100,
+                      message: "State cannot exceed 100 characters.",
+                    },
+                  }}
+                  render={({ field: stateField }) => (
+                    <>
+                      <StatePickerTrigger
+                        onPress={() => {
+                          setDraftState(stateField.value);
+                          setShowStatePicker(true);
+                        }}
+                        value={stateField.value}
+                      />
+                      <PickerModal
+                        onClose={() => setShowStatePicker(false)}
+                        onDone={() => {
+                          stateField.onChange(draftState);
+                          stateField.onBlur();
+                          setShowStatePicker(false);
+                        }}
+                        title="Choose a state"
+                        visible={showStatePicker}
+                      >
+                        <Picker
+                          onValueChange={(stateName) =>
+                            setDraftState(String(stateName))
+                          }
+                          selectedValue={draftState}
+                          style={styles.statePicker}
+                        >
+                          <Picker.Item label="Choose a state" value="" />
+                          {usStates.map((stateOption) => (
+                            <Picker.Item
+                              key={stateOption.abbreviation}
+                              label={stateOption.name}
+                              value={stateOption.name}
+                            />
+                          ))}
+                        </Picker>
+                      </PickerModal>
+                    </>
+                  )}
                 />
               </View>
 
               <View style={styles.halfWidth}>
-                <FloatingInput
+                <ControlledFloatingInput
+                  control={control}
                   keyboardType="number-pad"
                   labelText="ZIP Code"
-                  onChangeText={(value) => updateField("zipCode", value)}
-                  value={formData.zipCode}
+                  name="zipCode"
+                  placeholder="97201"
+                  rules={{
+                    validate: (value) =>
+                      !value ||
+                      zipCodeRegex.test(value) ||
+                      "Enter a 5-digit ZIP code.",
+                  }}
+                  transformValue={(value) =>
+                    value.replace(/\D/g, "").slice(0, 5)
+                  }
                 />
               </View>
             </>
           ) : null}
 
           <HapticButton
-            style={submitButton}
-            onPress={() => onSubmitPress(formData)}
+            disabled={!isValid || isSubmitting}
+            style={[
+              submitButton,
+              !isValid || isSubmitting ? buttonDisabled : null,
+            ]}
+            onPress={handleSubmit(onSubmitPress)}
           >
             <Text style={submitButtonText}>
-              {mode === "edit" ? "Save Changes" : "Add Provider"}
+              {isSubmitting
+                ? mode === "edit"
+                  ? "Saving Changes..."
+                  : "Adding Provider..."
+                : mode === "edit"
+                  ? "Save Changes"
+                  : "Add Provider"}
             </Text>
           </HapticButton>
 
@@ -238,37 +407,168 @@ export default function AddProviderForm({
   );
 }
 
-type FloatingInputProps = {
-  labelText: string;
-  value: string;
-  onChangeText: (value: string) => void;
+type ControlledFloatingInputProps = {
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  control: Control<ProviderFormData>;
   keyboardType?: "default" | "number-pad" | "phone-pad";
+  labelText: string;
+  name: keyof ProviderFormData;
   placeholder?: string;
+  required?: boolean;
+  rules?: ControllerProps<ProviderFormData>["rules"];
+  transformValue?: (value: string) => string;
 };
 
-function FloatingInput({
+function ControlledFloatingInput({
   autoCapitalize,
+  control,
   keyboardType,
   labelText,
-  onChangeText,
+  name,
   placeholder,
+  required = false,
+  rules,
+  transformValue,
+}: ControlledFloatingInputProps) {
+  return (
+    <Controller
+      control={control}
+      name={name}
+      rules={rules}
+      render={({ field: inputField, fieldState }) => (
+        <View style={[field, fieldStack]}>
+          <Text style={label}>
+            {labelText}
+            {required ? <Text style={styles.requiredIndicator}> *</Text> : null}
+          </Text>
+          <TextInput
+            autoCapitalize={autoCapitalize}
+            keyboardType={keyboardType}
+            onBlur={inputField.onBlur}
+            onChangeText={(value) =>
+              inputField.onChange(transformValue ? transformValue(value) : value)
+            }
+            placeholder={placeholder}
+            placeholderTextColor="#8a96a8"
+            ref={inputField.ref}
+            style={[
+              textInput,
+              fieldState.isTouched && fieldState.invalid
+                ? styles.inputError
+                : null,
+            ]}
+            value={inputField.value}
+          />
+          {fieldState.isTouched && fieldState.error ? (
+            <Text style={styles.errorText}>{fieldState.error.message}</Text>
+          ) : null}
+        </View>
+      )}
+    />
+  );
+}
+
+function RequiredLabel({
+  children,
+  style,
+}: {
+  children: ReactNode;
+  style: object;
+}) {
+  return (
+    <Text style={style}>
+      {children}
+      <Text style={styles.requiredIndicator}> *</Text>
+    </Text>
+  );
+}
+
+function StatePickerTrigger({
+  onPress,
   value,
-}: FloatingInputProps) {
+}: {
+  onPress: () => void;
+  value: string;
+}) {
   return (
     <View style={[field, fieldStack]}>
-      <Text style={label}>{labelText}</Text>
-      <TextInput
-        autoCapitalize={autoCapitalize}
-        keyboardType={keyboardType}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor="#8a96a8"
-        style={textInput}
-        value={value}
-      />
+      <Text style={label}>State</Text>
+      <HapticButton onPress={onPress} style={styles.pickerTrigger}>
+        <Text
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+          numberOfLines={1}
+          style={[
+            styles.pickerTriggerText,
+            value ? null : styles.pickerPlaceholder,
+          ]}
+        >
+          {value || "Choose a state"}
+        </Text>
+      </HapticButton>
     </View>
   );
+}
+
+function formatPhoneNumber(value: string) {
+  let digits = value.replace(/\D/g, "");
+
+  if (digits.length === 11 && digits.startsWith("1")) {
+    digits = digits.slice(1);
+  }
+
+  digits = digits.slice(0, 10);
+
+  if (digits.length <= 3) {
+    return digits ? `(${digits}` : "";
+  }
+
+  if (digits.length <= 6) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  }
+
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+function isValidImageUrl(value: string) {
+  if (!value.trim()) {
+    return true;
+  }
+
+  try {
+    const url = new URL(value.trim());
+
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function getProviderFormDefaults(formData: ProviderFormData): ProviderFormData {
+  return {
+    ...formData,
+    phoneNumber: formatPhoneNumber(formData.phoneNumber),
+  };
+}
+
+function normalizeProviderFormData(
+  formData: ProviderFormData,
+): ProviderFormData {
+  const isProvider = formData.type === "provider";
+
+  return {
+    firstName: isProvider ? formData.firstName.trim() : "",
+    lastName: isProvider ? formData.lastName.trim() : "",
+    clinicName: isProvider ? "" : formData.clinicName.trim(),
+    specialty: formData.specialty.trim(),
+    phoneNumber: formData.phoneNumber,
+    type: formData.type,
+    imageUrl: formData.imageUrl.trim(),
+    streetAddress: isProvider ? "" : formData.streetAddress.trim(),
+    city: isProvider ? "" : formData.city.trim(),
+    state: isProvider ? "" : formData.state.trim(),
+    zipCode: isProvider ? "" : formData.zipCode,
+  };
 }
 
 const styles = StyleSheet.create({
@@ -290,5 +590,43 @@ const styles = StyleSheet.create({
   },
   halfWidth: {
     width: "50%",
+  },
+  pickerTrigger: {
+    backgroundColor: "#ffffff",
+    borderColor: "#d9e1ea",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 52,
+    paddingBottom: 12,
+    paddingHorizontal: 14,
+    paddingTop: 16,
+  },
+  pickerTriggerText: {
+    color: colors.primary,
+    fontFamily: fonts.body,
+    fontSize: 16,
+    fontWeight: fontWeights.regular,
+  },
+  pickerPlaceholder: {
+    color: "#8a96a8",
+  },
+  statePicker: {
+    color: colors.primary,
+    fontFamily: fonts.body,
+    height: 216,
+    width: "100%",
+  },
+  requiredIndicator: {
+    color: "#d24747",
+  },
+  inputError: {
+    borderColor: "#d24747",
+  },
+  errorText: {
+    color: "#d24747",
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 17,
   },
 });

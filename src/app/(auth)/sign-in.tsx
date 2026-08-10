@@ -7,7 +7,8 @@ import { fonts, fontWeights } from "@/theme/fonts";
 import { fieldStack, label, textInput } from "@/theme/forms";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { useRef, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { useRef } from "react";
 import {
   SafeAreaView,
   ScrollView,
@@ -19,45 +20,35 @@ import {
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+type SignInFormValues = {
+  email: string;
+  password: string;
+};
+
 export default function SignInScreen() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [touched, setTouched] = useState({
-    email: false,
-    password: false,
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState("");
   const passwordInputRef = useRef<TextInput>(null);
   const { saveSession } = useAuth();
+  const {
+    clearErrors,
+    control,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting, isValid },
+  } = useForm<SignInFormValues>({
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+    mode: "onChange",
+  });
 
-  const trimmedEmail = email.trim();
-  const emailIsValid = emailRegex.test(trimmedEmail);
-  const passwordIsValid = password.length >= 8;
-  const formIsValid = emailIsValid && passwordIsValid;
-
-  function markTouched(field: keyof typeof touched) {
-    setTouched((currentTouched) => ({
-      ...currentTouched,
-      [field]: true,
-    }));
-  }
-
-  async function handleSignIn() {
-    markTouched("email");
-    markTouched("password");
-
-    if (!formIsValid || isSubmitting) {
-      return;
-    }
-
-    setIsSubmitting(true);
-    setSubmitMessage("");
+  async function handleSignIn(values: SignInFormValues) {
+    clearErrors("root.server");
 
     try {
       const result = await signInUser({
-        email: trimmedEmail,
-        password,
+        email: values.email.trim(),
+        password: values.password,
       });
 
       await saveSession({
@@ -66,13 +57,12 @@ export default function SignInScreen() {
       });
       router.replace("/dashboard");
     } catch (error) {
-      if (error instanceof Error) {
-        setSubmitMessage(error.message);
-      } else {
-        setSubmitMessage("Unable to sign in right now.");
-      }
-    } finally {
-      setIsSubmitting(false);
+      setError("root.server", {
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to sign in right now.",
+      });
     }
   }
 
@@ -98,74 +88,105 @@ export default function SignInScreen() {
           </View>
 
           <View style={styles.form}>
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                autoCapitalize="none"
-                autoComplete="email"
-                blurOnSubmit={false}
-                keyboardType="email-address"
-                onChangeText={setEmail}
-                onBlur={() => markTouched("email")}
-                onSubmitEditing={() => passwordInputRef.current?.focus()}
-                placeholder="you@example.com"
-                placeholderTextColor="#8a96a8"
-                returnKeyType="next"
-                style={[
-                  styles.input,
-                  touched.email && !emailIsValid ? styles.inputError : null,
-                ]}
-                textContentType="emailAddress"
-                value={email}
-              />
-              {touched.email && !emailIsValid ? (
-                <Text style={styles.errorText}>
-                  Enter a valid email address.
-                </Text>
-              ) : null}
-            </View>
+            <Controller
+              control={control}
+              name="email"
+              rules={{
+                required: "Email is required.",
+                validate: (value) =>
+                  emailRegex.test(value.trim()) ||
+                  "Enter a valid email address.",
+              }}
+              render={({ field, fieldState }) => (
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Email</Text>
+                  <TextInput
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    blurOnSubmit={false}
+                    keyboardType="email-address"
+                    onBlur={field.onBlur}
+                    onChangeText={field.onChange}
+                    onSubmitEditing={() => passwordInputRef.current?.focus()}
+                    placeholder="you@example.com"
+                    placeholderTextColor="#8a96a8"
+                    ref={field.ref}
+                    returnKeyType="next"
+                    style={[
+                      styles.input,
+                      fieldState.isTouched && fieldState.invalid
+                        ? styles.inputError
+                        : null,
+                    ]}
+                    textContentType="emailAddress"
+                    value={field.value}
+                  />
+                  {fieldState.isTouched && fieldState.error ? (
+                    <Text style={styles.errorText}>
+                      {fieldState.error.message}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
+            />
 
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Password</Text>
-              <TextInput
-                ref={passwordInputRef}
-                onChangeText={setPassword}
-                onBlur={() => markTouched("password")}
-                onSubmitEditing={handleSignIn}
-                placeholder="Enter your password"
-                placeholderTextColor="#8a96a8"
-                returnKeyType="done"
-                secureTextEntry
-                style={[
-                  styles.input,
-                  touched.password && !passwordIsValid
-                    ? styles.inputError
-                    : null,
-                ]}
-                textContentType="password"
-                value={password}
-              />
-              {touched.password && !passwordIsValid ? (
-                <Text style={styles.errorText}>
-                  Password must be at least 8 characters.
-                </Text>
-              ) : null}
-            </View>
+            <Controller
+              control={control}
+              name="password"
+              rules={{
+                required: "Password is required.",
+                minLength: {
+                  value: 8,
+                  message: "Password must be at least 8 characters.",
+                },
+              }}
+              render={({ field, fieldState }) => (
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Password</Text>
+                  <TextInput
+                    ref={(input) => {
+                      field.ref(input);
+                      passwordInputRef.current = input;
+                    }}
+                    onBlur={field.onBlur}
+                    onChangeText={field.onChange}
+                    onSubmitEditing={handleSubmit(handleSignIn)}
+                    placeholder="Enter your password"
+                    placeholderTextColor="#8a96a8"
+                    returnKeyType="done"
+                    secureTextEntry
+                    style={[
+                      styles.input,
+                      fieldState.isTouched && fieldState.invalid
+                        ? styles.inputError
+                        : null,
+                    ]}
+                    textContentType="password"
+                    value={field.value}
+                  />
+                  {fieldState.isTouched && fieldState.error ? (
+                    <Text style={styles.errorText}>
+                      {fieldState.error.message}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
+            />
             <HapticButton
-              disabled={!formIsValid || isSubmitting}
-              onPress={handleSignIn}
+              disabled={!isValid || isSubmitting}
+              onPress={handleSubmit(handleSignIn)}
               style={[
                 buttonPrimary,
-                !formIsValid || isSubmitting ? buttonDisabled : null,
+                !isValid || isSubmitting ? buttonDisabled : null,
               ]}
             >
               <Text style={buttonText}>
                 {isSubmitting ? "Signing in..." : "Sign in"}
               </Text>
             </HapticButton>
-            {submitMessage ? (
+            {errors.root?.server ? (
               <Text style={[styles.submitMessage, styles.submitError]}>
-                {submitMessage}
+                {errors.root.server.message}
               </Text>
             ) : null}
           </View>

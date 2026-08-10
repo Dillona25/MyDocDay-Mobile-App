@@ -25,6 +25,7 @@ type AuthContextValue = {
     token: string;
     user: SignedInUser;
   }) => Promise<void>;
+  updateUser: (user: SignedInUser) => void;
   signOut: () => Promise<void>;
 };
 
@@ -84,6 +85,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     await deleteSessionToken();
   }, [queryClient]);
 
+  const updateUser = useCallback((nextUser: SignedInUser) => {
+    setUser(nextUser);
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -91,9 +96,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       isAuthenticated: Boolean(token),
       isLoading,
       saveSession,
+      updateUser,
       signOut,
     }),
-    [isLoading, saveSession, signOut, token, user],
+    [isLoading, saveSession, signOut, token, updateUser, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

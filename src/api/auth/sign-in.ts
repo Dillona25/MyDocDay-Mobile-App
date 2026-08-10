@@ -10,6 +10,7 @@ export type SignedInUser = {
   lastName: string;
   city: string;
   state: string;
+  profileImageUrl: string | null;
   isActive: boolean;
   onboarding: {
     currentStep: number;

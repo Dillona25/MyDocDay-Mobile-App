@@ -1,8 +1,12 @@
 import type { SignedInUser } from "@/api/auth/sign-in";
+import { getUserProfileImageSource } from "@/api/users/profile";
+import { HapticButton } from "@/components/common/HapticButton";
 import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
+import { router } from "expo-router";
+import { StyleSheet, Text, View } from "react-native";
 
 type UserBarProps = {
   user: SignedInUser | null;
@@ -17,13 +21,30 @@ function getInitials(user: SignedInUser | null) {
 }
 
 export function UserBar({ user }: UserBarProps) {
-  const { signOut } = useAuth();
+  const { token } = useAuth();
+  const profileImageSource = getUserProfileImageSource(
+    user?.profileImageUrl,
+    token,
+  );
 
   return (
     <View style={styles.container}>
-      <View style={styles.userInfo}>
+      <HapticButton
+        accessibilityLabel="Open account"
+        accessibilityRole="button"
+        onPress={() => router.push("/account")}
+        style={styles.userInfo}
+      >
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{getInitials(user)}</Text>
+          {profileImageSource ? (
+            <Image
+              contentFit="cover"
+              source={profileImageSource}
+              style={styles.avatarImage}
+            />
+          ) : (
+            <Text style={styles.avatarText}>{getInitials(user)}</Text>
+          )}
         </View>
 
         <View style={styles.greetingGroup}>
@@ -32,11 +53,14 @@ export function UserBar({ user }: UserBarProps) {
             {user?.firstName}
           </Text>
         </View>
-      </View>
-
-      <Pressable onPress={signOut} style={styles.logoutButton}>
-        <Text style={styles.logoutText}>Logout</Text>
-      </Pressable>
+        <View style={styles.caretFrame}>
+          <Image
+            contentFit="contain"
+            source={require("../../assets/caret-right-solid-full.svg")}
+            style={styles.caretIcon}
+          />
+        </View>
+      </HapticButton>
     </View>
   );
 }
@@ -64,6 +88,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     height: 48,
     justifyContent: "center",
+    overflow: "hidden",
     width: 48,
   },
   avatarText: {
@@ -71,6 +96,10 @@ const styles = StyleSheet.create({
     fontFamily: fonts.heading,
     fontSize: 17,
     fontWeight: fontWeights.bold,
+  },
+  avatarImage: {
+    height: "100%",
+    width: "100%",
   },
   greetingGroup: {
     flex: 1,
@@ -90,19 +119,21 @@ const styles = StyleSheet.create({
     fontWeight: fontWeights.semibold,
     marginTop: 2,
   },
-  logoutButton: {
-    borderColor: "rgba(31, 53, 87, 0.12)",
-    borderRadius: 8,
+  caretFrame: {
+    alignItems: "center",
+    backgroundColor: "#f4f7fa",
+    borderColor: "#d9e1ea",
+    borderRadius: 6,
     borderWidth: 1,
+    height: 26,
+    justifyContent: "center",
     marginLeft: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    width: 26,
   },
-  logoutText: {
-    color: colors.primary,
-    fontFamily: fonts.body,
-    fontSize: 13,
-    fontWeight: fontWeights.semibold,
+  caretIcon: {
+    height: 12,
+    tintColor: "#8a96a8",
+    width: 12,
   },
   actions: {
     flexDirection: "row",
