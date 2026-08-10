@@ -1,5 +1,9 @@
+import { openLocationInMaps } from "@/api/appointments/maps";
+import { formatProviderLocation } from "@/api/providers/provider-location";
 import { HapticButton } from "@/components/common/HapticButton";
 import { useAppointments } from "@/hooks/useAppointments";
+import { useProviders } from "@/hooks/useProviders";
+import { useToast } from "@/store/ToastContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { Appointment } from "@/types/appointment";
@@ -55,9 +59,17 @@ export default function AppointmentDetailsScreen() {
   const { appointmentId } = useLocalSearchParams<{ appointmentId: string }>();
   const numericAppointmentId = Number(appointmentId);
   const { appointments, aptError, isLoadingApt } = useAppointments();
+  const { providers } = useProviders();
+  const { showToast } = useToast();
   const appointment = appointments.find(
     (appointmentItem) => appointmentItem.id === numericAppointmentId,
   );
+  const linkedProvider = providers.find(
+    (provider) => provider.id === appointment?.providerId,
+  );
+  const location =
+    appointment?.location ||
+    (linkedProvider ? formatProviderLocation(linkedProvider) : null);
 
   if (isLoadingApt) {
     return (
@@ -99,6 +111,18 @@ export default function AppointmentDetailsScreen() {
     appointment.providerType === "clinic" ? "Clinic" : "Provider";
   const isPast = getAppointmentDateTime(appointment) < new Date();
 
+  async function handleOpenInMaps() {
+    if (!location) {
+      return;
+    }
+
+    try {
+      await openLocationInMaps(location);
+    } catch {
+      showToast("Unable to open this location in Maps.", "error");
+    }
+  }
+
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -130,6 +154,20 @@ export default function AppointmentDetailsScreen() {
           >
             <Text style={styles.editButtonText}>Edit Appointment</Text>
           </HapticButton>
+          {location ? (
+            <HapticButton
+              accessibilityLabel="Open appointment location in Maps"
+              onPress={handleOpenInMaps}
+              style={styles.mapsButton}
+            >
+              <Text style={styles.mapsButtonText}>Open in Maps</Text>
+              <Image
+                contentFit="contain"
+                source={require("../../../assets/arrow-up-right-from-square-solid-full.svg")}
+                style={styles.mapsIcon}
+              />
+            </HapticButton>
+          ) : null}
         </View>
 
         <View style={styles.section}>
@@ -148,6 +186,9 @@ export default function AppointmentDetailsScreen() {
             <DetailRow label="Appointment type" value={appointmentTypeLabel} />
             {appointment.doctorName ? (
               <DetailRow label={providerLabel} value={appointment.doctorName} />
+            ) : null}
+            {location ? (
+              <DetailRow label="Location" value={location} />
             ) : null}
           </View>
         </View>
@@ -219,7 +260,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   actionRow: {
-    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
     paddingHorizontal: 24,
     paddingTop: 22,
   },
@@ -227,15 +269,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.secondary,
     borderRadius: 8,
-    flex: 1,
     justifyContent: "center",
     minHeight: 48,
+    width: "100%",
   },
   editButtonText: {
     color: "#ffffff",
     fontFamily: fonts.body,
     fontSize: 14,
     fontWeight: fontWeights.semibold,
+  },
+  mapsButton: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 7,
+    justifyContent: "center",
+    minHeight: 36,
+    paddingHorizontal: 10,
+  },
+  mapsButtonText: {
+    color: colors.primary,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: fontWeights.semibold,
+  },
+  mapsIcon: {
+    height: 12,
+    tintColor: colors.primary,
+    width: 12,
   },
   section: {
     borderTopColor: "rgba(31, 53, 87, 0.08)",

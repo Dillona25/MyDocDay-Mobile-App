@@ -21,6 +21,7 @@ import {
   textInput,
 } from "@/theme/forms";
 import type { AppointmentFormData } from "@/types/appointment-form";
+import { formatProviderLocation } from "@/api/providers/provider-location";
 import DateTimePicker, {
   DateTimePickerAndroid,
   type DateTimePickerEvent,
@@ -98,6 +99,7 @@ function createInitialAppointmentFormData(date: Date): AppointmentFormData {
     providerSelection: "",
     providerId: "",
     doctorName: "",
+    location: "",
   };
 }
 
@@ -161,6 +163,12 @@ export default function AddAppointmentForm({
   const selectedProviderMode = watch("providerSelection");
   const selectedProviderId = watch("providerId");
   const selectedAppointmentType = watch("appointmentType");
+  const selectedProvider = providers.find(
+    (provider) => String(provider.id) === selectedProviderId,
+  );
+  const savedProviderAddress = selectedProvider
+    ? formatProviderLocation(selectedProvider)
+    : null;
 
   useEffect(() => {
     void trigger(["providerId", "doctorName"]);
@@ -240,9 +248,16 @@ export default function AddAppointmentForm({
 
   async function onSubmitPress(formData: AppointmentFormData) {
     const normalizedFormData = normalizeAppointmentFormData(formData);
+    const resolvedLocation =
+      normalizedFormData.appointmentType === "in_person"
+        ? normalizedFormData.location || savedProviderAddress || undefined
+        : undefined;
 
     if (mode === "edit") {
-      await onEditSubmit?.(normalizedFormData);
+      await onEditSubmit?.({
+        ...normalizedFormData,
+        location: resolvedLocation ?? "",
+      });
       return;
     }
 
@@ -267,6 +282,7 @@ export default function AddAppointmentForm({
             normalizedFormData.providerSelection === otherDoctorValue
               ? normalizedFormData.doctorName
               : undefined,
+          location: resolvedLocation,
         },
         token,
       ]);
@@ -571,6 +587,28 @@ export default function AddAppointmentForm({
         />
       ) : null}
 
+      {selectedAppointmentType === "in_person" ? (
+        <View style={styles.locationGroup}>
+          <ControlledFloatingInput
+            control={control}
+            labelText="Location"
+            name="location"
+            placeholder="Clinic, hospital, or address"
+            rules={{
+              maxLength: {
+                value: 500,
+                message: "Location cannot exceed 500 characters.",
+              },
+            }}
+          />
+          {savedProviderAddress ? (
+            <Text style={styles.locationHelper}>
+              Leave this blank to use: {savedProviderAddress}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
       <HapticButton
         disabled={!isValid || isSubmitting}
         onPress={handleSubmit(onSubmitPress)}
@@ -851,6 +889,10 @@ function normalizeAppointmentFormData(
     providerSelection: formData.providerSelection,
     providerId: usesSavedProvider ? formData.providerId : "",
     doctorName: usesSavedProvider ? "" : formData.doctorName.trim(),
+    location:
+      formData.appointmentType === "in_person"
+        ? formData.location.trim()
+        : "",
   };
 }
 
@@ -861,6 +903,15 @@ const styles = StyleSheet.create({
   },
   fieldGroup: {
     gap: 10,
+  },
+  locationGroup: {
+    gap: 6,
+  },
+  locationHelper: {
+    color: "#536173",
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 17,
   },
   groupLabel: {
     color: "#536173",

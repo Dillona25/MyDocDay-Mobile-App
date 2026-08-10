@@ -6,6 +6,7 @@ export type AppointmentFormData = {
   providerSelection: "saved" | "other" | "";
   providerId: string;
   doctorName: string;
+  location: string;
 };
 
 export type AppointmentProviderSelection = AppointmentFormData["providerSelection"];
