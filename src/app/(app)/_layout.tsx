@@ -33,7 +33,7 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.secondary,
-        tabBarInactiveTintColor: "#7b8798",
+        tabBarInactiveTintColor: "#526783",
         tabBarShowLabel: false,
         tabBarItemStyle: styles.tabBarItem,
         tabBarStyle: styles.tabBar,
@@ -152,6 +152,7 @@ function TabIcon({
         styles.iconFrame,
         focused ? styles.iconFrameActive : styles.iconFrameInactive,
         elevated && styles.iconFrameElevated,
+        elevated && focused && styles.iconFrameElevatedActive,
       ]}
     >
       <Image
@@ -159,9 +160,10 @@ function TabIcon({
         source={tabIconSources[name]}
         style={[
           elevated ? styles.iconElevated : styles.icon,
-          { tintColor: color },
+          { tintColor: elevated ? "#ffffff" : color },
         ]}
       />
+      {focused && !elevated ? <View style={styles.activeIndicator} /> : null}
     </View>
   );
 }
@@ -183,25 +185,42 @@ const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: "#ffffff",
     borderTopColor: "#d9e1ea",
-    height: 86,
-    paddingBottom: 18,
-    paddingTop: 12,
+    borderTopWidth: 1,
+    elevation: 14,
+    height: 88,
+    paddingBottom: 17,
+    paddingTop: 11,
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: -5,
+    },
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
   },
   tabBarItem: {
     paddingVertical: 4,
   },
   iconFrame: {
     alignItems: "center",
-    borderRadius: 14,
-    height: 42,
+    borderRadius: 8,
+    height: 44,
     justifyContent: "center",
-    width: 54,
+    width: 52,
   },
   iconFrameActive: {
-    backgroundColor: "rgb(187, 240, 239)",
+    backgroundColor: "transparent",
   },
   iconFrameInactive: {
-    backgroundColor: "#fff",
+    backgroundColor: "transparent",
+  },
+  activeIndicator: {
+    backgroundColor: colors.secondary,
+    borderRadius: 2,
+    bottom: 1,
+    height: 3,
+    position: "absolute",
+    width: 18,
   },
   icon: {
     height: 25,
@@ -212,20 +231,23 @@ const styles = StyleSheet.create({
     width: 33,
   },
   iconFrameElevated: {
-    width: 64,
+    backgroundColor: colors.primary,
+    borderColor: "#ffffff",
+    borderRadius: 32,
+    borderWidth: 4,
     height: 64,
-    borderRadius: 20,
-
-    transform: [{ translateY: -14 }],
-
-    shadowColor: "#000",
+    shadowColor: "#081426",
     shadowOffset: {
       width: 0,
-      height: 3,
+      height: 5,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-
-    elevation: 4,
+    shadowOpacity: 0.24,
+    shadowRadius: 10,
+    transform: [{ translateY: -15 }],
+    width: 64,
+    elevation: 8,
+  },
+  iconFrameElevatedActive: {
+    backgroundColor: colors.secondary,
   },
 });
