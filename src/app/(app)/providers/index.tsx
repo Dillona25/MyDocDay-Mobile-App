@@ -4,7 +4,7 @@ import { useProviders } from "@/hooks/useProviders";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { ProviderType } from "@/types/provider";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   SafeAreaView,
@@ -14,30 +14,29 @@ import {
   View,
 } from "react-native";
 
-type ProviderFilter = "all" | ProviderType;
-
-const providerFilters: { label: string; value: ProviderFilter }[] = [
-  { label: "All", value: "all" },
+const providerFilters: { label: string; value: ProviderType }[] = [
   { label: "Providers", value: "provider" },
   { label: "Clinics", value: "clinic" },
 ];
 
 export default function ProvidersScreen() {
+  const { filter } = useLocalSearchParams<{ filter?: string }>();
   const { error, isLoading, providers } = useProviders();
-  const [activeFilter, setActiveFilter] = useState<ProviderFilter>("all");
+  const [activeFilter, setActiveFilter] = useState<ProviderType>("provider");
 
   useFocusEffect(
     useCallback(() => {
+      setActiveFilter(filter === "clinic" ? "clinic" : "provider");
+
       return () => {
-        setActiveFilter("all");
+        setActiveFilter("provider");
       };
-    }, []),
+    }, [filter]),
   );
 
-  const filteredProviders =
-    activeFilter === "all"
-      ? providers
-      : providers.filter((provider) => provider.type === activeFilter);
+  const filteredProviders = providers.filter(
+    (provider) => provider.type === activeFilter,
+  );
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -85,14 +84,12 @@ export default function ProvidersScreen() {
           {!isLoading && !error && filteredProviders.length === 0 ? (
             <View>
               <Text style={styles.helperHeader}>
-                {activeFilter === "all"
+                {activeFilter === "provider"
                   ? "No providers found."
-                  : `No ${activeFilter}s found.`}
+                  : "No clinics found."}
               </Text>
               <Text style={styles.emptyText}>
-                {activeFilter === "all"
-                  ? "Add your first provider or clinic and they will appear here."
-                  : `Add your first ${activeFilter} and they will appear in this filter.`}
+                Add your first {activeFilter} and it will appear here.
               </Text>
             </View>
           ) : null}
