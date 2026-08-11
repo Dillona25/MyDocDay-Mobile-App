@@ -100,7 +100,14 @@ export default function AppLayout() {
       />
       <Tabs.Screen
         name="reminders"
+        listeners={{
+          tabPress: (event) => {
+            event.preventDefault();
+            router.navigate("/reminders");
+          },
+        }}
         options={{
+          popToTopOnBlur: true,
           title: "Reminders",
           tabBarIcon: ({ color, focused }) => (
             <TabIcon color={color} focused={focused} name="reminders" />
