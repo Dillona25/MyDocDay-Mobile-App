@@ -323,7 +323,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minHeight: 48,
     width: "100%",
-    width: "100%",
   },
   editButtonText: {
     color: "#ffffff",
