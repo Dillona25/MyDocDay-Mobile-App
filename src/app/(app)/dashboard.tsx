@@ -6,7 +6,9 @@ import { useProviders } from "@/hooks/useProviders";
 import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
-import { router } from "expo-router";
+import type { ProviderType } from "@/types/provider";
+import { router, type Href } from "expo-router";
+import { useState } from "react";
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 
 const MAX_VISIBLE_PROVIDERS = 4;
@@ -14,8 +16,13 @@ const MAX_VISIBLE_PROVIDERS = 4;
 export default function DashboardScreen() {
   const { user } = useAuth();
   const { error, isLoading, providers } = useProviders();
-  const visibleProviders = providers.slice(0, MAX_VISIBLE_PROVIDERS);
-  const hasMoreProviders = providers.length > MAX_VISIBLE_PROVIDERS;
+  const [providerFilter, setProviderFilter] =
+    useState<ProviderType>("provider");
+  const filteredProviders = providers.filter(
+    (provider) => provider.type === providerFilter,
+  );
+  const visibleProviders = filteredProviders.slice(0, MAX_VISIBLE_PROVIDERS);
+  const hasMoreProviders = filteredProviders.length > MAX_VISIBLE_PROVIDERS;
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -27,49 +34,95 @@ export default function DashboardScreen() {
 
           <View style={styles.dashboardCard}>
             <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>Providers</Text>
+              <Text style={styles.cardTitle}>Care Team</Text>
+              <View style={styles.compactFilter}>
+                <DashboardFilterButton
+                  active={providerFilter === "provider"}
+                  label="Providers"
+                  onPress={() => setProviderFilter("provider")}
+                />
+                <DashboardFilterButton
+                  active={providerFilter === "clinic"}
+                  label="Clinics"
+                  onPress={() => setProviderFilter("clinic")}
+                />
+              </View>
             </View>
 
-            {providers.length > 0 ? (
+            {isLoading ? (
+              <Text style={styles.helperText}>Loading providers...</Text>
+            ) : error ? (
+              <Text style={styles.errorText}>{error}</Text>
+            ) : filteredProviders.length > 0 ? (
               <View style={styles.providerList}>
-                {error ? <Text style={styles.errorText}>{error}</Text> : null}
-                {isLoading ? (
-                  <Text style={styles.helperText}>Loading providers...</Text>
-                ) : null}
-                {!isLoading &&
-                  !error &&
-                  visibleProviders.map((provider) => (
-                    <View key={provider.id} style={styles.providerContainer}>
-                      <ProviderWidget
-                        provider={provider}
-                        returnTo="/dashboard"
-                      />
-                    </View>
-                  ))}
+                {visibleProviders.map((provider) => (
+                  <View key={provider.id} style={styles.providerContainer}>
+                    <ProviderWidget
+                      provider={provider}
+                      returnTo="/dashboard"
+                    />
+                  </View>
+                ))}
               </View>
             ) : (
               <View style={styles.providerListEmpty}>
                 <Text style={styles.emptyTitle}>
-                  You have no care providers
+                  No {providerFilter === "provider" ? "providers" : "clinics"} yet
                 </Text>
                 <Text style={styles.emptyText}>
-                  Add your first provider and they will appear here!
+                  Add your first {providerFilter} and it will appear here.
                 </Text>
               </View>
             )}
 
-            {hasMoreProviders ? (
+            {!isLoading && !error && hasMoreProviders ? (
               <HapticButton
-                onPress={() => router.push("/providers")}
+                onPress={() =>
+                  router.push(
+                    `/providers?filter=${providerFilter}` as Href,
+                  )
+                }
                 style={styles.footerButton}
               >
-                <Text style={styles.footerButtonText}>View all providers</Text>
+                <Text style={styles.footerButtonText}>
+                  View all{" "}
+                  {providerFilter === "provider" ? "providers" : "clinics"}
+                </Text>
               </HapticButton>
             ) : null}
           </View>
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function DashboardFilterButton({
+  active,
+  label,
+  onPress,
+}: {
+  active: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <HapticButton
+      onPress={onPress}
+      style={[
+        styles.compactFilterButton,
+        active ? styles.compactFilterButtonActive : null,
+      ]}
+    >
+      <Text
+        style={[
+          styles.compactFilterText,
+          active ? styles.compactFilterTextActive : null,
+        ]}
+      >
+        {label}
+      </Text>
+    </HapticButton>
   );
 }
 
@@ -128,6 +181,33 @@ const styles = StyleSheet.create({
     fontFamily: fonts.heading,
     fontSize: 20,
     fontWeight: fontWeights.semibold,
+  },
+  compactFilter: {
+    backgroundColor: "#f4f7fa",
+    borderColor: "rgba(31, 53, 87, 0.1)",
+    borderRadius: 6,
+    borderWidth: 1,
+    flexDirection: "row",
+    padding: 3,
+  },
+  compactFilterButton: {
+    alignItems: "center",
+    borderRadius: 4,
+    justifyContent: "center",
+    minHeight: 30,
+    paddingHorizontal: 9,
+  },
+  compactFilterButtonActive: {
+    backgroundColor: colors.secondary,
+  },
+  compactFilterText: {
+    color: colors.primary,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    fontWeight: fontWeights.semibold,
+  },
+  compactFilterTextActive: {
+    color: "#ffffff",
   },
   addButton: {
     alignItems: "center",
