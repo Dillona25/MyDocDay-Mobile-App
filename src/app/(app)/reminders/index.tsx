@@ -110,10 +110,9 @@ export default function RemindersScreen() {
 
             {!isLoading && !error && openTasks.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyTitle}>No active health reminders</Text>
+                <Text style={styles.emptyTitle}>No health reminders yet</Text>
                 <Text style={styles.emptyText}>
-                  Add a health reminder and it will stay visible here until it is
-                  complete.
+                  Use the + button to add a health reminder. It will appear here.
                 </Text>
               </View>
             ) : null}

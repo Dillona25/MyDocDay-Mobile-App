@@ -74,7 +74,8 @@ export default function DashboardScreen() {
                   No {providerFilter === "provider" ? "providers" : "clinics"} yet
                 </Text>
                 <Text style={styles.emptyText}>
-                  Add your first {providerFilter} and it will appear here.
+                  Use the + button to add your first {providerFilter}. It will
+                  appear here.
                 </Text>
               </View>
             )}

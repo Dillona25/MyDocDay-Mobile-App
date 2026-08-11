@@ -154,8 +154,8 @@ export function AppointmentWidget() {
           />
           <Text style={styles.emptyTitle}>{appointmentTitle}</Text>
           <Text style={styles.emptyText}>
-            When appointments are added, they will show here for the selected
-            day.
+            Use the + button to add an appointment. It will appear here on the
+            selected day.
           </Text>
         </View>
       ) : null}
