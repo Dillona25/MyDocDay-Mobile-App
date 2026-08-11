@@ -114,6 +114,7 @@ export function AppointmentCard({
               .join(" • ")}
           </Text>
         </View>
+
       </HapticButton>
     );
   }

@@ -62,7 +62,7 @@ export function ProviderWidget({
           <Image
             accessibilityLabel={displayName}
             contentFit="cover"
-            contentPosition={{ left: "50%", top: "58%" }}
+            contentPosition="top center"
             source={{ uri: provider.imageUrl }}
             style={[
               styles.avatarImage,
@@ -118,6 +118,7 @@ export function ProviderWidget({
             {provider.specialty}
           </Text>
         </View>
+
       </View>
 
       {hasDetails ? (
