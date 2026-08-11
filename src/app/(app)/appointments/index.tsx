@@ -30,6 +30,12 @@ type TimelineGroup = {
   date: Date;
 };
 
+type TimelineMonth = {
+  monthKey: string;
+  label: string;
+  groups: TimelineGroup[];
+};
+
 const appointmentFilters: {
   label: string;
   value: AppointmentFilter;
@@ -71,6 +77,27 @@ function groupAppointments(appointments: Appointment[]): TimelineGroup[] {
     dateKey,
     appointments: groupedAppointments,
     date: getAppointmentDateTime(groupedAppointments[0]),
+  }));
+}
+
+function groupTimelineMonths(groups: TimelineGroup[]): TimelineMonth[] {
+  const months = new Map<string, TimelineGroup[]>();
+
+  groups.forEach((group) => {
+    const monthKey = `${group.date.getFullYear()}-${group.date.getMonth()}`;
+    const currentMonth = months.get(monthKey) ?? [];
+
+    currentMonth.push(group);
+    months.set(monthKey, currentMonth);
+  });
+
+  return Array.from(months.entries()).map(([monthKey, monthGroups]) => ({
+    monthKey,
+    groups: monthGroups,
+    label: monthGroups[0].date.toLocaleDateString(undefined, {
+      month: "long",
+      year: "numeric",
+    }),
   }));
 }
 
@@ -165,6 +192,10 @@ export default function AppointmentsScreen() {
   const timelineGroups = useMemo(
     () => groupAppointments(upcomingAppointments),
     [upcomingAppointments],
+  );
+  const timelineMonths = useMemo(
+    () => groupTimelineMonths(timelineGroups),
+    [timelineGroups],
   );
 
   const pastYears = useMemo(
@@ -526,45 +557,56 @@ export default function AppointmentsScreen() {
         activeFilter === "upcoming" &&
         timelineGroups.length > 0 ? (
           <View style={styles.timeline}>
-            {timelineGroups.map((group, groupIndex) => (
-              <View key={group.dateKey} style={styles.timelineGroup}>
-                <View style={styles.timelineRail}>
-                  <View style={styles.dateBadge}>
-                    <Text style={styles.dateMonth}>
-                      {group.date.toLocaleDateString(undefined, {
-                        month: "short",
-                      })}
-                    </Text>
-                    <Text style={styles.dateDay}>{group.date.getDate()}</Text>
-                  </View>
-                  {groupIndex < timelineGroups.length - 1 ? (
-                    <View style={styles.timelineLine} />
-                  ) : null}
+            {timelineMonths.map((month) => (
+              <View key={month.monthKey} style={styles.timelineMonth}>
+                <View style={styles.monthHeader}>
+                  <Text style={styles.monthTitle}>{month.label}</Text>
+                  <View style={styles.monthRule} />
                 </View>
 
-                <View style={styles.timelineContent}>
-                  <View style={styles.groupHeader}>
-                    <Text style={styles.groupTitle}>
-                      {getDayLabel(group.date)}
-                    </Text>
-                    <Text style={styles.groupCount}>
-                      {group.appointments.length}{" "}
-                      {group.appointments.length === 1
-                        ? "appointment"
-                        : "appointments"}
-                    </Text>
-                  </View>
+                {month.groups.map((group, groupIndex) => (
+                  <View key={group.dateKey} style={styles.timelineGroup}>
+                    <View style={styles.timelineRail}>
+                      <View style={styles.dateBadge}>
+                        <Text style={styles.dateMonth}>
+                          {group.date.toLocaleDateString(undefined, {
+                            month: "short",
+                          })}
+                        </Text>
+                        <Text style={styles.dateDay}>
+                          {group.date.getDate()}
+                        </Text>
+                      </View>
+                      {groupIndex < month.groups.length - 1 ? (
+                        <View style={styles.timelineLine} />
+                      ) : null}
+                    </View>
 
-                  <View style={styles.appointmentList}>
-                    {group.appointments.map((appointment) => (
-                      <AppointmentCard
-                        appointment={appointment}
-                        key={appointment.id}
-                        variant="full"
-                      />
-                    ))}
+                    <View style={styles.timelineContent}>
+                      <View style={styles.groupHeader}>
+                        <Text style={styles.groupTitle}>
+                          {getDayLabel(group.date)}
+                        </Text>
+                        <Text style={styles.groupCount}>
+                          {group.appointments.length}{" "}
+                          {group.appointments.length === 1
+                            ? "appointment"
+                            : "appointments"}
+                        </Text>
+                      </View>
+
+                      <View style={styles.appointmentList}>
+                        {group.appointments.map((appointment) => (
+                          <AppointmentCard
+                            appointment={appointment}
+                            key={appointment.id}
+                            variant="full"
+                          />
+                        ))}
+                      </View>
+                    </View>
                   </View>
-                </View>
+                ))}
               </View>
             ))}
           </View>
@@ -844,7 +886,27 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   timeline: {
+    gap: 18,
+  },
+  timelineMonth: {
     gap: 0,
+  },
+  monthHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 16,
+  },
+  monthTitle: {
+    color: colors.primary,
+    fontFamily: fonts.heading,
+    fontSize: 20,
+    fontWeight: fontWeights.bold,
+  },
+  monthRule: {
+    backgroundColor: "rgba(31, 53, 87, 0.14)",
+    flex: 1,
+    height: 1,
   },
   timelineGroup: {
     alignItems: "stretch",
