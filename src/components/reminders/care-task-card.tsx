@@ -219,10 +219,13 @@ const styles = StyleSheet.create({
   },
   titleGroup: {
     alignItems: "flex-start",
+    flexDirection: "row",
     gap: 7,
+    justifyContent: "space-between",
   },
   title: {
     color: colors.primary,
+    flex: 1,
     fontFamily: fonts.heading,
     fontSize: 15,
     fontWeight: fontWeights.semibold,

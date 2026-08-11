@@ -2,8 +2,10 @@ import { AppointmentWidget } from "@/components/appointments/appointment-widget"
 import { HapticButton } from "@/components/common/HapticButton";
 import { UserBar } from "@/components/dashboard/user-bar";
 import { ProviderWidget } from "@/components/providers/provider-widget";
+import { ReminderWidget } from "@/components/reminders/reminder-widget";
 import { useProviders } from "@/hooks/useProviders";
 import { useAuth } from "@/store/auth/AuthContext";
+import { borderPrimary } from "@/theme/borders";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { ProviderType } from "@/types/provider";
@@ -30,6 +32,8 @@ export default function DashboardScreen() {
         <UserBar user={user} />
 
         <View style={styles.widgetContent}>
+          <ReminderWidget />
+
           <AppointmentWidget />
 
           <View style={styles.dashboardCard}>
@@ -132,12 +136,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#f4f7fa",
   },
   content: {
-    gap: 18,
     paddingTop: 0,
     paddingBottom: 32,
   },
   widgetContent: {
     gap: 18,
+    marginTop: 18,
     paddingHorizontal: 24,
   },
   helperText: {
@@ -153,10 +157,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   dashboardCard: {
+    ...borderPrimary,
     backgroundColor: "#ffffff",
-    borderColor: "rgba(31, 53, 87, 0.08)",
     borderRadius: 8,
-    borderWidth: 1,
     elevation: 3,
     padding: 18,
     shadowColor: colors.primary,

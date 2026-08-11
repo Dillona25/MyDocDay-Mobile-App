@@ -1,22 +1,47 @@
 import AddAppointmentForm from "@/components/appointments/add-appointment-form";
 import { HapticButton } from "@/components/common/HapticButton";
+import AddCareTaskForm from "@/components/reminders/add-care-task-form";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { SafeAreaView, StyleSheet, Text, View } from "react-native";
 import AddProviderForm from "../../components/providers/add-provider-form";
 
-const providerFilters: {
+type AdditionType = "provider" | "appointment" | "reminder";
+
+const additionOptions: {
+  eyebrow: string;
   label: string;
-  value: string;
+  title: string;
+  value: AdditionType;
 }[] = [
-  { label: "Provider", value: "provider" },
-  { label: "Appointment", value: "appointment" },
+  {
+    eyebrow: "Care Team",
+    label: "Provider",
+    title: "Add a New Provider",
+    value: "provider",
+  },
+  {
+    eyebrow: "Appointments",
+    label: "Appointment",
+    title: "Add a New Appointment",
+    value: "appointment",
+  },
+  {
+    eyebrow: "Health Reminders",
+    label: "Reminder",
+    title: "Add a Health Reminder",
+    value: "reminder",
+  },
 ];
 
 export default function AddScreen() {
-  const [activeFilter, setActiveFilter] = useState<string>("provider");
+  const [activeFilter, setActiveFilter] =
+    useState<AdditionType>("provider");
+  const activeOption = additionOptions.find(
+    (option) => option.value === activeFilter,
+  )!;
 
   useFocusEffect(
     useCallback(() => {
@@ -29,20 +54,13 @@ export default function AddScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.content}>
-        {activeFilter === "provider" ? (
-          <View style={styles.header}>
-            <Text style={styles.eyebrow}>Care Team</Text>
-            <Text style={styles.title}>Add a New Provider</Text>
-          </View>
-        ) : (
-          <View style={styles.header}>
-            <Text style={styles.eyebrow}>Appointments</Text>
-            <Text style={styles.title}>Add a New Appointment</Text>
-          </View>
-        )}
+        <View style={styles.header}>
+          <Text style={styles.eyebrow}>{activeOption.eyebrow}</Text>
+          <Text style={styles.title}>{activeOption.title}</Text>
+        </View>
 
         <View style={styles.filterRow}>
-          {providerFilters.map((filter) => {
+          {additionOptions.map((filter) => {
             const isActive = filter.value === activeFilter;
 
             return (
@@ -69,9 +87,17 @@ export default function AddScreen() {
 
         <View style={styles.formContainer}>
           {activeFilter === "provider" ? (
-            <AddProviderForm />
+            <AddProviderForm
+              onCreateSuccess={() => router.navigate("/providers")}
+            />
+          ) : activeFilter === "appointment" ? (
+            <AddAppointmentForm
+              onCreateSuccess={() => router.navigate("/appointments")}
+            />
           ) : (
-            <AddAppointmentForm />
+            <AddCareTaskForm
+              onCreateSuccess={() => router.navigate("/reminders")}
+            />
           )}
         </View>
       </View>

@@ -123,9 +123,11 @@ function getStartOfToday() {
 
 export default function AddCareTaskForm({
   footer,
+  onCreateSuccess,
   task,
 }: {
   footer?: ReactNode;
+  onCreateSuccess?: () => void;
   task?: CareTask;
 }) {
   const [initialFormData] = useState(() =>
@@ -256,7 +258,13 @@ export default function AddCareTaskForm({
           : "Health reminder added successfully",
         "success",
       );
-      router.dismissTo("/reminders");
+      if (task) {
+        router.dismissTo("/reminders");
+      } else if (onCreateSuccess) {
+        onCreateSuccess();
+      } else {
+        router.navigate("/reminders");
+      }
     } catch (error) {
       console.log(error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
