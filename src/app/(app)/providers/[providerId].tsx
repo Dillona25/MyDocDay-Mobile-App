@@ -11,6 +11,7 @@ import { router, type Href, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -230,7 +231,9 @@ export default function ProviderDetailsScreen() {
 
           <View style={styles.detailList}>
             <DetailRow label="Specialty" value={provider.specialty} />
-            <DetailRow label="Phone" value={provider.phoneNumber} />
+            {provider.phoneNumber ? (
+              <PhoneDetailRow phoneNumber={provider.phoneNumber} />
+            ) : null}
             <DetailRow
               label="Address"
               value={[addressLine, regionLine].filter(Boolean).join("\n")}
@@ -389,6 +392,32 @@ function DetailRow({
   );
 }
 
+function PhoneDetailRow({ phoneNumber }: { phoneNumber: string }) {
+  const callablePhoneNumber = phoneNumber.replace(/[^\d+]/g, "");
+
+  return (
+    <View style={styles.detailRow}>
+      <View style={styles.phoneRow}>
+        <Text style={styles.detailLabel}>Phone</Text>
+        <HapticButton
+          accessibilityLabel={`Call ${phoneNumber}`}
+          accessibilityRole="link"
+          onPress={() => Linking.openURL(`tel:${callablePhoneNumber}`)}
+          style={styles.callLink}
+        >
+          <Image
+            contentFit="contain"
+            source={require("../../../assets/phone-solid-full.svg")}
+            style={styles.callIcon}
+          />
+          <Text style={styles.callLinkText}>Click to call</Text>
+        </HapticButton>
+      </View>
+      <Text style={styles.detailValue}>{phoneNumber}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: {
     backgroundColor: "#f4f7fa",
@@ -515,6 +544,29 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
+  },
+  phoneRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between",
+  },
+  callLink: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 5,
+    minHeight: 28,
+  },
+  callIcon: {
+    height: 12,
+    tintColor: colors.secondary,
+    width: 12,
+  },
+  callLinkText: {
+    color: colors.secondary,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    fontWeight: fontWeights.semibold,
   },
   appointmentHeader: {
     alignItems: "flex-end",
