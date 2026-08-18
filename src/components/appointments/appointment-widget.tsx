@@ -1,5 +1,6 @@
 import { AppointmentCard } from "@/components/appointments/appointment-card";
 import { useAppointments } from "@/hooks/useAppointments";
+import { borderPrimary } from "@/theme/borders";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import { Image } from "expo-image";
@@ -153,8 +154,8 @@ export function AppointmentWidget() {
           />
           <Text style={styles.emptyTitle}>{appointmentTitle}</Text>
           <Text style={styles.emptyText}>
-            When appointments are added, they will show here for the selected
-            day.
+            Use the + button to add an appointment. It will appear here on the
+            selected day.
           </Text>
         </View>
       ) : null}
@@ -171,10 +172,9 @@ export function AppointmentWidget() {
 
 const styles = StyleSheet.create({
   card: {
+    ...borderPrimary,
     backgroundColor: "#ffffff",
-    borderColor: "rgba(31, 53, 87, 0.08)",
     borderRadius: 8,
-    borderWidth: 1,
     elevation: 3,
     padding: 18,
     shadowColor: colors.primary,

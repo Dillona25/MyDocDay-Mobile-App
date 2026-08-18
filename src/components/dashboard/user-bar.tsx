@@ -69,6 +69,10 @@ const styles = StyleSheet.create({
   container: {
     alignItems: "center",
     backgroundColor: "#ffffff",
+    borderBottomColor: "#d9e1ea",
+    borderBottomWidth: 1,
+    borderTopColor: "#d9e1ea",
+    borderTopWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 24,

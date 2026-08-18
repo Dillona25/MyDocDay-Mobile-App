@@ -124,6 +124,7 @@ type AddAppointmentFormProps = {
   footer?: ReactNode;
   initialData?: AppointmentFormData;
   mode?: "create" | "edit";
+  onCreateSuccess?: () => void;
   onEditSubmit?: (formData: AppointmentFormData) => void | Promise<void>;
 };
 
@@ -131,6 +132,7 @@ export default function AddAppointmentForm({
   footer,
   initialData,
   mode = "create",
+  onCreateSuccess,
   onEditSubmit,
 }: AddAppointmentFormProps) {
   const [defaultInitialData] = useState(() =>
@@ -295,6 +297,7 @@ export default function AddAppointmentForm({
       setSelectedTime(nextDate);
       setActivePicker(null);
       reset(createInitialAppointmentFormData(nextDate));
+      onCreateSuccess?.();
     } catch (requestError) {
       console.log(requestError);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

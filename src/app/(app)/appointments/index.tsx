@@ -329,7 +329,7 @@ export default function AppointmentsScreen() {
       : "No appointments here yet";
   const emptyCopy =
     activeFilter === "upcoming"
-      ? "New appointments will appear here as your care schedule grows."
+      ? "Use the + button to add an appointment. It will appear here as your care schedule grows."
       : hasActiveHistoryFilter
         ? "Try adjusting the year, date, or provider to see more history."
         : "Completed appointments will collect here over time.";

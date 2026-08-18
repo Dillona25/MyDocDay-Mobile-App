@@ -55,6 +55,7 @@ type AddProviderFormProps = {
   footer?: ReactNode;
   initialData?: ProviderFormData;
   mode?: "create" | "edit";
+  onCreateSuccess?: () => void;
   onEditSubmit?: (formData: ProviderFormData) => void | Promise<void>;
 };
 
@@ -62,6 +63,7 @@ export default function AddProviderForm({
   footer,
   initialData = initialProviderFormData,
   mode = "create",
+  onCreateSuccess,
   onEditSubmit,
 }: AddProviderFormProps) {
   const formDefaults = getProviderFormDefaults(initialData);
@@ -124,6 +126,7 @@ export default function AddProviderForm({
       showToast("Provider added successfully", "success");
       reset(initialProviderFormData);
       setDraftState("");
+      onCreateSuccess?.();
     } catch (error) {
       console.log(error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

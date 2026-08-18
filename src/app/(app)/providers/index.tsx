@@ -89,7 +89,8 @@ export default function ProvidersScreen() {
                   : "No clinics found."}
               </Text>
               <Text style={styles.emptyText}>
-                Add your first {activeFilter} and it will appear here.
+                Use the + button to add your first {activeFilter}. It will
+                appear here.
               </Text>
             </View>
           ) : null}

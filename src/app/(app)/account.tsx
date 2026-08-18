@@ -38,12 +38,19 @@ const supportItems: AccountItem[] = [
     label: "Privacy Statement",
     description: "How MyDocDay protects your information",
     external: true,
-    href: "https://www.mydocday.com/privacy",
+    href: "https://www.mydocday.com/legal/privacy",
   },
   {
     label: "Terms of Use",
     description: "Terms for using MyDocDay",
     external: true,
+    href: "https://www.mydocday.com/legal/terms",
+  },
+  {
+    label: "Data Consent",
+    description: "How MyDocDay uses your care information",
+    external: true,
+    href: "https://www.mydocday.com/legal/data-consent",
   },
   {
     label: "Contact",
@@ -105,7 +112,7 @@ export default function AccountScreen() {
         </View>
 
         <AccountSection items={accountItems} title="Profile & app" />
-        <AccountSection items={supportItems} title="Privacy & support" />
+          <AccountSection items={supportItems} title="Legal & support" />
 
         <HapticButton
           accessibilityRole="button"
