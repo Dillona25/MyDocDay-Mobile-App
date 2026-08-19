@@ -1,4 +1,7 @@
-import { getUserProviders } from "@/api/providers/providers";
+import {
+  getUserProviders,
+  ProviderApiError,
+} from "@/api/providers/providers";
 import { useAuth } from "@/store/auth/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -20,6 +23,13 @@ export function useProviders() {
       return data.providers;
     },
     enabled: Boolean(token && user),
+    retry: (failureCount, error) => {
+      if (error instanceof ProviderApiError && error.statusCode < 500) {
+        return false;
+      }
+
+      return failureCount < 2;
+    },
   });
 
   return {

@@ -51,6 +51,10 @@ export default function EditAppointmentScreen() {
       providerId: appointment.providerId ? String(appointment.providerId) : "",
       doctorName: appointment.providerId ? "" : (appointment.doctorName ?? ""),
       location: appointment.location ?? "",
+      providerVisitWindowResponse: appointment.providerVisitWindowDate
+        ? "covers"
+        : "",
+      providerVisitWindowDate: appointment.providerVisitWindowDate ?? null,
     };
   }, [appointment]);
 
@@ -110,6 +114,10 @@ export default function EditAppointmentScreen() {
               ? formData.doctorName.trim()
               : undefined,
           location: formData.location.trim() || undefined,
+          providerVisitWindowDate:
+            formData.providerVisitWindowResponse === "covers"
+              ? formData.providerVisitWindowDate
+              : null,
         },
         token,
       ]);

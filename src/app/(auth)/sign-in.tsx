@@ -1,7 +1,11 @@
 import { signInUser } from "@/api/auth/sign-in";
 import { HapticButton } from "@/components/common/HapticButton";
 import { useAuth } from "@/store/auth/AuthContext";
-import { buttonDisabled, buttonPrimary, buttonText } from "@/theme/buttons";
+import {
+  buttonDisabled,
+  buttonSubmit,
+  buttonSubmitText,
+} from "@/theme/buttons";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import { fieldStack, label, textInput } from "@/theme/forms";
@@ -176,11 +180,11 @@ export default function SignInScreen() {
               disabled={!isValid || isSubmitting}
               onPress={handleSubmit(handleSignIn)}
               style={[
-                buttonPrimary,
+                buttonSubmit,
                 !isValid || isSubmitting ? buttonDisabled : null,
               ]}
             >
-              <Text style={buttonText}>
+              <Text style={buttonSubmitText}>
                 {isSubmitting ? "Signing in..." : "Sign in"}
               </Text>
             </HapticButton>

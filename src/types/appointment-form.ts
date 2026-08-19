@@ -7,6 +7,8 @@ export type AppointmentFormData = {
   providerId: string;
   doctorName: string;
   location: string;
+  providerVisitWindowResponse: "" | "covers" | "separate";
+  providerVisitWindowDate: string | null;
 };
 
 export type AppointmentProviderSelection = AppointmentFormData["providerSelection"];

@@ -22,6 +22,7 @@ import {
   textInput,
 } from "@/theme/forms";
 import type { ProviderFormData } from "@/types/provider-form";
+import type { CreateProviderInput } from "@/types/provider";
 import { Picker } from "@react-native-picker/picker";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect } from "expo-router";
@@ -30,14 +31,43 @@ import {
   Controller,
   type Control,
   type ControllerProps,
+  type UseFormSetValue,
   useForm,
 } from "react-hook-form";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 const phoneNumberRegex = /^\(\d{3}\) \d{3}-\d{4}$/;
 const zipCodeRegex = /^\d{5}$/;
+const visitMonths = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
+const appointmentStatuses = [
+  { label: "Yes, it is already booked", value: "scheduled" },
+  { label: "No, remind me before that month", value: "not_scheduled" },
+  { label: "I am not sure", value: "unsure" },
+] as const;
+const reminderLeadTimes = [
+  { label: "On the due date", value: 0 },
+  { label: "1 week before", value: 7 },
+  { label: "2 weeks before", value: 14 },
+  { label: "1 month before", value: 30 },
+] as const;
+const secondReminderDefaults = [7, 14, 30, 0] as const;
 
 export const initialProviderFormData: ProviderFormData = {
+  isForAccountOwner: true,
+  careMemberIds: [],
   firstName: "",
   lastName: "",
   clinicName: "",
@@ -49,6 +79,11 @@ export const initialProviderFormData: ProviderFormData = {
   city: "",
   state: "",
   zipCode: "",
+  scheduleAnswer: "",
+  annualMonths: [],
+  nextAppointmentStatus: "",
+  reminderLeadDays: 30,
+  secondReminderLeadDays: null,
 };
 
 type AddProviderFormProps = {
@@ -56,7 +91,7 @@ type AddProviderFormProps = {
   initialData?: ProviderFormData;
   mode?: "create" | "edit";
   onCreateSuccess?: () => void;
-  onEditSubmit?: (formData: ProviderFormData) => void | Promise<void>;
+  onEditSubmit?: (providerData: CreateProviderInput) => void | Promise<void>;
 };
 
 export default function AddProviderForm({
@@ -76,6 +111,7 @@ export default function AddProviderForm({
     control,
     handleSubmit,
     reset,
+    setValue,
     trigger,
     watch,
     formState: { isSubmitting, isValid },
@@ -84,10 +120,18 @@ export default function AddProviderForm({
     mode: "onChange",
   });
   const providerType = watch("type");
+  const scheduleAnswer = watch("scheduleAnswer");
+  const nextAppointmentStatus = watch("nextAppointmentStatus");
+  const reminderLeadDays = watch("reminderLeadDays");
+  const secondReminderLeadDays = watch("secondReminderLeadDays");
 
   useEffect(() => {
     void trigger(["firstName", "lastName", "clinicName", "specialty"]);
   }, [providerType, trigger]);
+
+  useEffect(() => {
+    void trigger(["scheduleAnswer", "annualMonths", "nextAppointmentStatus"]);
+  }, [nextAppointmentStatus, scheduleAnswer, trigger]);
 
   useFocusEffect(
     useCallback(() => {
@@ -102,10 +146,10 @@ export default function AddProviderForm({
   );
 
   async function onSubmitPress(formData: ProviderFormData) {
-    const normalizedFormData = normalizeProviderFormData(formData);
+    const providerData = buildProviderPayload(formData, mode);
 
     if (mode === "edit") {
-      await onEditSubmit?.(normalizedFormData);
+      await onEditSubmit?.(providerData);
       return;
     }
 
@@ -115,10 +159,7 @@ export default function AddProviderForm({
 
     try {
       await createProviderMutation.mutateAsync([
-        {
-          ...normalizedFormData,
-          type: normalizedFormData.type || "provider",
-        },
+        providerData,
         token,
       ]);
 
@@ -130,7 +171,10 @@ export default function AddProviderForm({
     } catch (error) {
       console.log(error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      showToast("Something went wrong with the request", "error");
+      showToast(
+        error instanceof Error ? error.message : "Unable to add provider.",
+        "error",
+      );
     }
   }
 
@@ -384,6 +428,16 @@ export default function AddProviderForm({
             </>
           ) : null}
 
+          <VisitScheduleFields
+            control={control}
+            nextAppointmentStatus={nextAppointmentStatus}
+            providerType={providerType}
+            reminderLeadDays={reminderLeadDays}
+            scheduleAnswer={scheduleAnswer}
+            secondReminderLeadDays={secondReminderLeadDays}
+            setValue={setValue}
+          />
+
           <HapticButton
             disabled={!isValid || isSubmitting}
             style={[
@@ -396,10 +450,14 @@ export default function AddProviderForm({
               {isSubmitting
                 ? mode === "edit"
                   ? "Saving Changes..."
-                  : "Adding Provider..."
+                  : providerType === "clinic"
+                    ? "Adding Clinic..."
+                    : "Adding Provider..."
                 : mode === "edit"
                   ? "Save Changes"
-                  : "Add Provider"}
+                  : providerType === "clinic"
+                    ? "Add Clinic"
+                    : "Add Provider"}
             </Text>
           </HapticButton>
 
@@ -410,19 +468,19 @@ export default function AddProviderForm({
   );
 }
 
-type ControlledFloatingInputProps = {
+type ControlledFloatingInputProps<TName extends ProviderTextFieldName> = {
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
   control: Control<ProviderFormData>;
   keyboardType?: "default" | "number-pad" | "phone-pad";
   labelText: string;
-  name: keyof ProviderFormData;
+  name: TName;
   placeholder?: string;
   required?: boolean;
-  rules?: ControllerProps<ProviderFormData>["rules"];
+  rules?: ControllerProps<ProviderFormData, TName>["rules"];
   transformValue?: (value: string) => string;
 };
 
-function ControlledFloatingInput({
+function ControlledFloatingInput<TName extends ProviderTextFieldName>({
   autoCapitalize,
   control,
   keyboardType,
@@ -432,7 +490,7 @@ function ControlledFloatingInput({
   required = false,
   rules,
   transformValue,
-}: ControlledFloatingInputProps) {
+}: ControlledFloatingInputProps<TName>) {
   return (
     <Controller
       control={control}
@@ -513,6 +571,385 @@ function StatePickerTrigger({
   );
 }
 
+type VisitScheduleFieldsProps = {
+  control: Control<ProviderFormData>;
+  nextAppointmentStatus: ProviderFormData["nextAppointmentStatus"];
+  providerType: ProviderFormData["type"];
+  reminderLeadDays: ProviderFormData["reminderLeadDays"];
+  scheduleAnswer: ProviderFormData["scheduleAnswer"];
+  secondReminderLeadDays: ProviderFormData["secondReminderLeadDays"];
+  setValue: UseFormSetValue<ProviderFormData>;
+};
+
+type ProviderTextFieldName =
+  | "firstName"
+  | "lastName"
+  | "clinicName"
+  | "specialty"
+  | "phoneNumber"
+  | "imageUrl"
+  | "streetAddress"
+  | "city"
+  | "zipCode";
+
+function VisitScheduleFields({
+  control,
+  nextAppointmentStatus,
+  providerType,
+  reminderLeadDays,
+  scheduleAnswer,
+  secondReminderLeadDays,
+  setValue,
+}: VisitScheduleFieldsProps) {
+  const isAnnualFrequency = scheduleAnswer === "annual_months";
+
+  return (
+    <View style={styles.scheduleSection}>
+      <Text style={styles.scheduleTitle}>Usual visit months</Text>
+      <Text style={styles.scheduleDescription}>
+        Select the months you normally see this {providerType}. We will use them
+        to help you stay ahead of future visits.
+      </Text>
+
+      <Controller
+        control={control}
+        name="annualMonths"
+        rules={{
+          validate: (months) =>
+            scheduleAnswer !== "annual_months" ||
+            months.length > 0 ||
+            "Choose at least one visit month.",
+        }}
+        render={({ field: monthsField, fieldState }) => (
+          <>
+            <View style={styles.monthGrid}>
+              {visitMonths.map((month, index) => {
+                const monthNumber = index + 1;
+                const isSelected = monthsField.value.includes(monthNumber);
+
+                return (
+                  <HapticButton
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    key={month}
+                    onPress={() => {
+                      const nextMonths = isSelected
+                        ? monthsField.value.filter(
+                            (selectedMonth) => selectedMonth !== monthNumber,
+                          )
+                        : [...monthsField.value, monthNumber].sort(
+                            (left, right) => left - right,
+                          );
+
+                      monthsField.onChange(nextMonths);
+                      monthsField.onBlur();
+                      setValue(
+                        "scheduleAnswer",
+                        nextMonths.length ? "annual_months" : "",
+                        { shouldDirty: true, shouldValidate: true },
+                      );
+
+                      if (nextMonths.length === 0) {
+                        setValue("nextAppointmentStatus", "", {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                        setValue("secondReminderLeadDays", null, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                      }
+                    }}
+                    style={[
+                      styles.monthButton,
+                      isSelected ? styles.scheduleOptionActive : null,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.monthButtonText,
+                        isSelected ? styles.scheduleOptionTextActive : null,
+                      ]}
+                    >
+                      {month.slice(0, 3)}
+                    </Text>
+                  </HapticButton>
+                );
+              })}
+            </View>
+            {fieldState.isTouched && fieldState.error ? (
+              <Text style={styles.errorText}>{fieldState.error.message}</Text>
+            ) : null}
+          </>
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="scheduleAnswer"
+        rules={{ required: "Choose visit months or select another answer." }}
+        render={({ field: answerField, fieldState }) => (
+          <>
+            <View style={styles.scheduleAnswerRow}>
+              {[
+                { label: "No regular schedule", value: "none" },
+                { label: "I'm not sure", value: "unsure" },
+              ].map((answer) => {
+                const isSelected = answerField.value === answer.value;
+
+                return (
+                  <HapticButton
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    key={answer.value}
+                    onPress={() => {
+                      answerField.onChange(answer.value);
+                      answerField.onBlur();
+                      setValue("annualMonths", [], {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                      setValue("nextAppointmentStatus", "", {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                      setValue("secondReminderLeadDays", null, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                    }}
+                    style={[
+                      styles.scheduleAnswerButton,
+                      isSelected ? styles.scheduleOptionActive : null,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.scheduleAnswerText,
+                        isSelected ? styles.scheduleOptionTextActive : null,
+                      ]}
+                    >
+                      {answer.label}
+                    </Text>
+                  </HapticButton>
+                );
+              })}
+            </View>
+            {fieldState.isTouched && fieldState.error ? (
+              <Text style={styles.errorText}>{fieldState.error.message}</Text>
+            ) : null}
+          </>
+        )}
+      />
+
+      {isAnnualFrequency ? (
+        <View style={styles.followUpSection}>
+          <RequiredLabel style={styles.groupLabel}>
+            Is your next visit already booked?
+          </RequiredLabel>
+          <Controller
+            control={control}
+            name="nextAppointmentStatus"
+            rules={{ required: "Choose an answer about your next visit." }}
+            render={({ field: statusField, fieldState }) => (
+              <>
+                <View style={styles.verticalOptions}>
+                  {appointmentStatuses.map((status) => {
+                    const isSelected = statusField.value === status.value;
+
+                    return (
+                      <HapticButton
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: isSelected }}
+                        key={status.value}
+                        onPress={() => {
+                          statusField.onChange(status.value);
+                          statusField.onBlur();
+                          if (status.value !== "not_scheduled") {
+                            setValue("secondReminderLeadDays", null, {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            });
+                          }
+                        }}
+                        style={[
+                          styles.fullWidthOption,
+                          isSelected ? styles.scheduleOptionActive : null,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.scheduleAnswerText,
+                            isSelected
+                              ? styles.scheduleOptionTextActive
+                              : null,
+                          ]}
+                        >
+                          {status.label}
+                        </Text>
+                      </HapticButton>
+                    );
+                  })}
+                </View>
+                {fieldState.isTouched && fieldState.error ? (
+                  <Text style={styles.errorText}>
+                    {fieldState.error.message}
+                  </Text>
+                ) : null}
+              </>
+            )}
+          />
+
+          {nextAppointmentStatus === "not_scheduled" ? (
+            <View style={styles.reminderSection}>
+              <RequiredLabel style={styles.groupLabel}>
+                Remind me before the visit month
+              </RequiredLabel>
+              <Controller
+                control={control}
+                name="reminderLeadDays"
+                render={({ field: reminderField }) => (
+                  <View style={styles.leadTimeGrid}>
+                    {reminderLeadTimes.map((leadTime) => {
+                      const isSelected = reminderField.value === leadTime.value;
+
+                      return (
+                        <HapticButton
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: isSelected }}
+                          key={leadTime.value}
+                          onPress={() => {
+                            reminderField.onChange(leadTime.value);
+                            if (secondReminderLeadDays === leadTime.value) {
+                              setValue("secondReminderLeadDays", null, {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              });
+                            }
+                          }}
+                          style={[
+                            styles.leadTimeButton,
+                            isSelected ? styles.scheduleOptionActive : null,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.leadTimeText,
+                              isSelected
+                                ? styles.scheduleOptionTextActive
+                                : null,
+                            ]}
+                          >
+                            {leadTime.label}
+                          </Text>
+                        </HapticButton>
+                      );
+                    })}
+                  </View>
+                )}
+              />
+
+              {secondReminderLeadDays === null ? (
+                <HapticButton
+                  accessibilityRole="button"
+                  onPress={() => {
+                    const defaultLeadTime =
+                      secondReminderDefaults.find(
+                        (leadTime) => leadTime !== reminderLeadDays,
+                      ) ?? null;
+
+                    setValue("secondReminderLeadDays", defaultLeadTime, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                  }}
+                  style={styles.addReminderButton}
+                >
+                  <Text style={styles.addReminderText}>+ Add second reminder</Text>
+                </HapticButton>
+              ) : (
+                <Controller
+                  control={control}
+                  name="secondReminderLeadDays"
+                  rules={{
+                    validate: (value) =>
+                      value === null ||
+                      value !== reminderLeadDays ||
+                      "Choose a different time for the second reminder.",
+                  }}
+                  render={({ field: secondReminderField, fieldState }) => (
+                    <View style={styles.secondReminderSection}>
+                      <View style={styles.secondReminderHeader}>
+                        <Text style={styles.groupLabel}>Second reminder</Text>
+                        <HapticButton
+                          accessibilityRole="button"
+                          onPress={() => secondReminderField.onChange(null)}
+                          style={styles.removeReminderButton}
+                        >
+                          <Text style={styles.removeReminderText}>Remove</Text>
+                        </HapticButton>
+                      </View>
+                      <View style={styles.leadTimeGrid}>
+                        {reminderLeadTimes
+                          .filter(
+                            (leadTime) => leadTime.value !== reminderLeadDays,
+                          )
+                          .map((leadTime) => {
+                            const isSelected =
+                              secondReminderField.value === leadTime.value;
+
+                            return (
+                              <HapticButton
+                                accessibilityRole="button"
+                                accessibilityState={{ selected: isSelected }}
+                                key={leadTime.value}
+                                onPress={() =>
+                                  secondReminderField.onChange(leadTime.value)
+                                }
+                                style={[
+                                  styles.leadTimeButton,
+                                  isSelected
+                                    ? styles.scheduleOptionActive
+                                    : null,
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.leadTimeText,
+                                    isSelected
+                                      ? styles.scheduleOptionTextActive
+                                      : null,
+                                  ]}
+                                >
+                                  {leadTime.label}
+                                </Text>
+                              </HapticButton>
+                            );
+                          })}
+                      </View>
+                      {fieldState.error ? (
+                        <Text style={styles.errorText}>
+                          {fieldState.error.message}
+                        </Text>
+                      ) : null}
+                    </View>
+                  )}
+                />
+              )}
+            </View>
+          ) : null}
+
+          {nextAppointmentStatus === "scheduled" ? (
+            <Text style={styles.scheduleHelper}>
+              You can add the exact appointment date in the appointments area.
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 function formatPhoneNumber(value: string) {
   let digits = value.replace(/\D/g, "");
 
@@ -550,27 +987,57 @@ function isValidImageUrl(value: string) {
 function getProviderFormDefaults(formData: ProviderFormData): ProviderFormData {
   return {
     ...formData,
+    careMemberIds: [...formData.careMemberIds],
+    annualMonths: [...formData.annualMonths],
     phoneNumber: formatPhoneNumber(formData.phoneNumber),
   };
 }
 
-function normalizeProviderFormData(
+function buildProviderPayload(
   formData: ProviderFormData,
-): ProviderFormData {
+  mode: "create" | "edit",
+): CreateProviderInput {
   const isProvider = formData.type === "provider";
+  const hasVisitSchedule =
+    formData.scheduleAnswer === "annual_months" &&
+    formData.annualMonths.length > 0 &&
+    Boolean(formData.nextAppointmentStatus);
+  const visitSchedule = hasVisitSchedule
+    ? {
+        annualMonths: [...formData.annualMonths].sort(
+          (left, right) => left - right,
+        ),
+        reminderLeadDays:
+          formData.nextAppointmentStatus === "not_scheduled"
+            ? formData.reminderLeadDays
+            : undefined,
+        secondReminderLeadDays:
+          formData.nextAppointmentStatus === "not_scheduled"
+            ? formData.secondReminderLeadDays ?? undefined
+            : undefined,
+        nextAppointmentStatus: formData.nextAppointmentStatus || "unsure",
+      }
+    : mode === "edit"
+      ? null
+      : undefined;
 
   return {
-    firstName: isProvider ? formData.firstName.trim() : "",
-    lastName: isProvider ? formData.lastName.trim() : "",
-    clinicName: isProvider ? "" : formData.clinicName.trim(),
+    isForAccountOwner: formData.isForAccountOwner,
+    careMemberIds: [...new Set(formData.careMemberIds)],
+    firstName: isProvider ? formData.firstName.trim() : undefined,
+    lastName: isProvider ? formData.lastName.trim() : undefined,
+    clinicName: isProvider ? undefined : formData.clinicName.trim(),
     specialty: formData.specialty.trim(),
-    phoneNumber: formData.phoneNumber,
-    type: formData.type,
-    imageUrl: formData.imageUrl.trim(),
-    streetAddress: isProvider ? "" : formData.streetAddress.trim(),
-    city: isProvider ? "" : formData.city.trim(),
-    state: isProvider ? "" : formData.state.trim(),
-    zipCode: isProvider ? "" : formData.zipCode,
+    phoneNumber: formData.phoneNumber || undefined,
+    type: formData.type || "provider",
+    imageUrl: formData.imageUrl.trim() || undefined,
+    streetAddress: isProvider
+      ? undefined
+      : formData.streetAddress.trim() || undefined,
+    city: isProvider ? undefined : formData.city.trim() || undefined,
+    state: isProvider ? undefined : formData.state.trim() || undefined,
+    zipCode: isProvider ? undefined : formData.zipCode || undefined,
+    visitSchedule,
   };
 }
 
@@ -631,5 +1098,166 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 12,
     lineHeight: 17,
+  },
+  scheduleSection: {
+    borderTopColor: "rgba(31, 53, 87, 0.12)",
+    borderTopWidth: 1,
+    gap: 12,
+    marginTop: 4,
+    paddingTop: 20,
+  },
+  scheduleTitle: {
+    color: colors.primary,
+    fontFamily: fonts.heading,
+    fontSize: 17,
+    fontWeight: fontWeights.semibold,
+  },
+  scheduleDescription: {
+    color: "#536173",
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: -6,
+  },
+  monthGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  monthButton: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderColor: "#d9e1ea",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 42,
+    width: "31%",
+  },
+  monthButtonText: {
+    color: colors.primary,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: fontWeights.semibold,
+  },
+  scheduleAnswerRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  scheduleAnswerButton: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderColor: "#d9e1ea",
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 46,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  scheduleAnswerText: {
+    color: colors.primary,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: fontWeights.semibold,
+    lineHeight: 18,
+    textAlign: "center",
+  },
+  scheduleOptionActive: {
+    backgroundColor: colors.secondary,
+    borderColor: colors.secondary,
+  },
+  scheduleOptionTextActive: {
+    color: "#ffffff",
+  },
+  followUpSection: {
+    borderTopColor: "rgba(31, 53, 87, 0.1)",
+    borderTopWidth: 1,
+    gap: 12,
+    marginTop: 4,
+    paddingTop: 16,
+  },
+  verticalOptions: {
+    gap: 8,
+  },
+  fullWidthOption: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderColor: "#d9e1ea",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 46,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  reminderSection: {
+    gap: 10,
+  },
+  addReminderButton: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    borderColor: "rgba(31, 53, 87, 0.28)",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 40,
+    paddingHorizontal: 12,
+  },
+  addReminderText: {
+    color: colors.primary,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: fontWeights.semibold,
+  },
+  secondReminderSection: {
+    gap: 10,
+    marginTop: 4,
+  },
+  secondReminderHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  removeReminderButton: {
+    justifyContent: "center",
+    minHeight: 36,
+    paddingHorizontal: 4,
+  },
+  removeReminderText: {
+    color: "#536173",
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: fontWeights.semibold,
+  },
+  leadTimeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  leadTimeButton: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderColor: "#d9e1ea",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: 8,
+    width: "48.5%",
+  },
+  leadTimeText: {
+    color: colors.primary,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: fontWeights.semibold,
+    textAlign: "center",
+  },
+  scheduleHelper: {
+    color: "#536173",
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 19,
   },
 });

@@ -1,5 +1,6 @@
 import { updateProvider } from "@/api/providers/providers";
 import { appointmentsQueryKey } from "@/hooks/useAppointments";
+import { careTasksQueryKey } from "@/hooks/useCareTasks";
 import { providersQueryKey } from "@/hooks/useProviders";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -15,6 +16,7 @@ export function useUpdateProvider() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: providersQueryKey }),
         queryClient.invalidateQueries({ queryKey: appointmentsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: careTasksQueryKey }),
       ]);
     },
   });

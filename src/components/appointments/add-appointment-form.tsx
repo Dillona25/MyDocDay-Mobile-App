@@ -21,6 +21,7 @@ import {
   textInput,
 } from "@/theme/forms";
 import type { AppointmentFormData } from "@/types/appointment-form";
+import type { Provider } from "@/types/provider";
 import { formatProviderLocation } from "@/api/providers/provider-location";
 import DateTimePicker, {
   DateTimePickerAndroid,
@@ -100,6 +101,8 @@ function createInitialAppointmentFormData(date: Date): AppointmentFormData {
     providerId: "",
     doctorName: "",
     location: "",
+    providerVisitWindowResponse: "",
+    providerVisitWindowDate: null,
   };
 }
 
@@ -165,16 +168,47 @@ export default function AddAppointmentForm({
   const selectedProviderMode = watch("providerSelection");
   const selectedProviderId = watch("providerId");
   const selectedAppointmentType = watch("appointmentType");
+  const selectedAppointmentDate = watch("date");
+  const providerVisitWindowDate = watch("providerVisitWindowDate");
   const selectedProvider = providers.find(
     (provider) => String(provider.id) === selectedProviderId,
   );
   const savedProviderAddress = selectedProvider
     ? formatProviderLocation(selectedProvider)
     : null;
+  const adjacentVisitWindowDate = getAdjacentVisitWindowDate(
+    selectedProviderMode === "saved" ? selectedProvider : undefined,
+    selectedAppointmentDate,
+    resolvedInitialData.providerId === selectedProviderId
+      ? resolvedInitialData.providerVisitWindowDate
+      : null,
+  );
 
   useEffect(() => {
     void trigger(["providerId", "doctorName"]);
   }, [selectedProviderMode, trigger]);
+
+  useEffect(() => {
+    if (providerVisitWindowDate === adjacentVisitWindowDate) {
+      void trigger("providerVisitWindowResponse");
+      return;
+    }
+
+    setValue("providerVisitWindowDate", adjacentVisitWindowDate, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("providerVisitWindowResponse", "", {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    void trigger("providerVisitWindowResponse");
+  }, [
+    adjacentVisitWindowDate,
+    providerVisitWindowDate,
+    setValue,
+    trigger,
+  ]);
 
   useFocusEffect(
     useCallback(() => {
@@ -285,6 +319,10 @@ export default function AddAppointmentForm({
               ? normalizedFormData.doctorName
               : undefined,
           location: resolvedLocation,
+          providerVisitWindowDate:
+            normalizedFormData.providerVisitWindowResponse === "covers"
+              ? normalizedFormData.providerVisitWindowDate
+              : null,
         },
         token,
       ]);
@@ -460,6 +498,14 @@ export default function AddAppointmentForm({
                         shouldDirty: true,
                         shouldValidate: true,
                       });
+                      setValue("providerVisitWindowResponse", "", {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                      setValue("providerVisitWindowDate", null, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
                     }}
                     style={[optionButton, isActive ? optionButtonActive : null]}
                   >
@@ -520,6 +566,16 @@ export default function AddAppointmentForm({
                     <HapticButton
                       key={provider.id}
                       onPress={() => {
+                        if (selectedProviderId !== providerId) {
+                          setValue("providerVisitWindowResponse", "", {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                          setValue("providerVisitWindowDate", null, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                        }
                         providerField.onChange(providerId);
                         providerField.onBlur();
                       }}
@@ -569,6 +625,65 @@ export default function AddAppointmentForm({
             )}
           />
         </View>
+      ) : null}
+
+      {adjacentVisitWindowDate ? (
+        <Controller
+          control={control}
+          name="providerVisitWindowResponse"
+          rules={{
+            validate: (value) =>
+              !adjacentVisitWindowDate ||
+              value === "covers" ||
+              value === "separate" ||
+              "Choose whether this appointment covers the routine visit.",
+          }}
+          render={({ field: responseField, fieldState }) => (
+            <View style={styles.visitWindowQuestion}>
+              <RequiredLabel>
+                Does this appointment count as your needed{
+                  " "
+                }{formatVisitWindowMonth(adjacentVisitWindowDate)} routine visit?
+              </RequiredLabel>
+              <View style={segmentedRow}>
+                {[
+                  { label: "Yes, it does", value: "covers" },
+                  { label: "No, it is separate", value: "separate" },
+                ].map((option) => {
+                  const isActive = responseField.value === option.value;
+
+                  return (
+                    <HapticButton
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isActive }}
+                      key={option.value}
+                      onPress={() => {
+                        responseField.onChange(option.value);
+                        responseField.onBlur();
+                      }}
+                      style={[
+                        optionButton,
+                        isActive ? optionButtonActive : null,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          optionButtonText,
+                          isActive ? optionButtonTextActive : null,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </HapticButton>
+                  );
+                })}
+              </View>
+              {fieldState.isTouched && fieldState.error ? (
+                <Text style={styles.errorText}>{fieldState.error.message}</Text>
+              ) : null}
+            </View>
+          )}
+        />
       ) : null}
 
       {selectedProviderMode === otherDoctorValue ? (
@@ -636,13 +751,18 @@ export default function AddAppointmentForm({
   );
 }
 
+type AppointmentTextFieldName = "title" | "doctorName" | "location";
+
 type ControlledFloatingInputProps = {
   control: Control<AppointmentFormData>;
   labelText: string;
-  name: keyof AppointmentFormData;
+  name: AppointmentTextFieldName;
   placeholder?: string;
   required?: boolean;
-  rules?: ControllerProps<AppointmentFormData>["rules"];
+  rules?: ControllerProps<
+    AppointmentFormData,
+    AppointmentTextFieldName
+  >["rules"];
 };
 
 function ControlledFloatingInput({
@@ -896,7 +1016,65 @@ function normalizeAppointmentFormData(
       formData.appointmentType === "in_person"
         ? formData.location.trim()
         : "",
+    providerVisitWindowResponse: formData.providerVisitWindowResponse,
+    providerVisitWindowDate: formData.providerVisitWindowDate,
   };
+}
+
+function getAdjacentVisitWindowDate(
+  provider: Provider | undefined,
+  appointmentDate: string,
+  existingWindowDate: string | null | undefined,
+): string | null {
+  if (appointmentDate.slice(0, 10) < formatDateForApi(new Date())) return null;
+
+  const ownerSchedule = provider?.visitSchedules.find(
+    (schedule) => schedule.careMemberId === null && schedule.isEnabled,
+  );
+
+  if (!ownerSchedule) return null;
+
+  if (
+    existingWindowDate &&
+    areAdjacentCalendarMonths(appointmentDate, existingWindowDate)
+  ) {
+    return existingWindowDate;
+  }
+
+  if (
+    ownerSchedule.nextVisitDueDate &&
+    areAdjacentCalendarMonths(appointmentDate, ownerSchedule.nextVisitDueDate)
+  ) {
+    return ownerSchedule.nextVisitDueDate;
+  }
+
+  const [appointmentYear] = appointmentDate.slice(0, 7).split("-").map(Number);
+  const adjacentWindows = ownerSchedule.annualMonths.flatMap((month) =>
+    [appointmentYear - 1, appointmentYear, appointmentYear + 1]
+      .map((year) => `${year}-${String(month).padStart(2, "0")}-15`)
+      .filter((date) => areAdjacentCalendarMonths(appointmentDate, date)),
+  );
+
+  return adjacentWindows.length === 1 ? adjacentWindows[0] : null;
+}
+
+function areAdjacentCalendarMonths(left: string, right: string): boolean {
+  const [leftYear, leftMonth] = left.slice(0, 7).split("-").map(Number);
+  const [rightYear, rightMonth] = right.slice(0, 7).split("-").map(Number);
+
+  if (!leftYear || !leftMonth || !rightYear || !rightMonth) return false;
+
+  return Math.abs(leftYear * 12 + leftMonth - (rightYear * 12 + rightMonth)) === 1;
+}
+
+function formatVisitWindowMonth(date: string): string {
+  const [year, month] = date.slice(0, 7).split("-").map(Number);
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, 1)));
 }
 
 const styles = StyleSheet.create({
@@ -915,6 +1093,14 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 12,
     lineHeight: 17,
+  },
+  visitWindowQuestion: {
+    backgroundColor: "#edf9f8",
+    borderColor: "rgba(28, 184, 178, 0.28)",
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 10,
+    padding: 14,
   },
   groupLabel: {
     color: "#536173",

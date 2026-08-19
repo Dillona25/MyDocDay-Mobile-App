@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
   },
   editButton: {
     alignItems: "center",
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.primary,
     borderRadius: 8,
     justifyContent: "center",
     minHeight: 48,

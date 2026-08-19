@@ -13,8 +13,9 @@ import { useAuth } from "@/store/auth/AuthContext";
 import { useToast } from "@/store/ToastContext";
 import {
   buttonDisabled,
-  buttonPrimary,
   buttonSecondary,
+  buttonSubmit,
+  buttonSubmitText,
   buttonText,
 } from "@/theme/buttons";
 import { colors } from "@/theme/colors";
@@ -345,11 +346,11 @@ export default function EditProfileScreen() {
             disabled={!isValid || !hasChanges || isSubmitting}
             onPress={handleSubmit(saveProfile)}
             style={[
-              buttonPrimary,
+              buttonSubmit,
               !isValid || !hasChanges || isSubmitting ? buttonDisabled : null,
             ]}
           >
-            <Text style={buttonText}>
+            <Text style={buttonSubmitText}>
               {isSubmitting ? "Saving Changes..." : "Save Changes"}
             </Text>
           </HapticButton>

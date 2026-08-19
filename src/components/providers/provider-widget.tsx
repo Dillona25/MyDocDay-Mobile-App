@@ -32,6 +32,9 @@ export function ProviderWidget({
   const hasDetails = Boolean(
     location || provider.zipCode || provider.phoneNumber,
   );
+  const activeVisitSchedule =
+    provider.visitSchedules.find((schedule) => schedule.isEnabled) ??
+    (provider.visitSchedule?.isEnabled ? provider.visitSchedule : null);
 
   return (
     <HapticButton
@@ -87,17 +90,36 @@ export function ProviderWidget({
         <View style={styles.headingContent}>
           <View style={styles.labelRow}>
             <Text style={styles.widgetLabel}>{widgetLabel}</Text>
-            {onDelete ? (
-              <Pressable
-                accessibilityLabel={`Delete ${displayName}`}
-                onPress={(event) => {
-                  event.stopPropagation();
-                  onDelete();
-                }}
-              >
-                <Text style={styles.deleteText}>Delete</Text>
-              </Pressable>
-            ) : null}
+            <View style={styles.labelActions}>
+              {activeVisitSchedule ? (
+                <View
+                  accessibilityLabel={`Routine visit schedule active: ${formatRoutineMonths(activeVisitSchedule.annualMonths)}`}
+                  accessible
+                  style={styles.scheduleIndicator}
+                >
+                  <View style={styles.scheduleDot} />
+                  <Text
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                    numberOfLines={1}
+                    style={styles.scheduleText}
+                  >
+                    Routine Visits Enabled
+                  </Text>
+                </View>
+              ) : null}
+              {onDelete ? (
+                <Pressable
+                  accessibilityLabel={`Delete ${displayName}`}
+                  onPress={(event) => {
+                    event.stopPropagation();
+                    onDelete();
+                  }}
+                >
+                  <Text style={styles.deleteText}>Delete</Text>
+                </Pressable>
+              ) : null}
+            </View>
           </View>
 
           <Text
@@ -158,6 +180,35 @@ export function ProviderWidget({
       ) : null}
     </HapticButton>
   );
+}
+
+const shortMonthNames = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+function formatRoutineMonths(months: number[]): string {
+  const monthLabels = months
+    .map((month) => shortMonthNames[month - 1])
+    .filter((month): month is (typeof shortMonthNames)[number] =>
+      Boolean(month),
+    );
+
+  if (monthLabels.length <= 3) {
+    return monthLabels.join(", ");
+  }
+
+  return `${monthLabels.length} months per year`;
 }
 
 const styles = StyleSheet.create({
@@ -225,6 +276,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
   },
+  labelActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexShrink: 1,
+    gap: 10,
+    marginLeft: 8,
+    minWidth: 0,
+  },
   widgetLabel: {
     color: colors.secondary,
     fontFamily: fonts.body,
@@ -259,6 +318,25 @@ const styles = StyleSheet.create({
   fullSpecialty: {
     fontSize: 14,
     marginTop: 2,
+  },
+  scheduleIndicator: {
+    alignItems: "center",
+    flexShrink: 1,
+    flexDirection: "row",
+    gap: 5,
+  },
+  scheduleDot: {
+    backgroundColor: colors.secondary,
+    borderRadius: 4,
+    height: 8,
+    width: 8,
+  },
+  scheduleText: {
+    color: "#39716f",
+    flexShrink: 1,
+    fontFamily: fonts.body,
+    fontSize: 10,
+    fontWeight: fontWeights.bold,
   },
   details: {
     borderTopColor: "#f1f5f9",

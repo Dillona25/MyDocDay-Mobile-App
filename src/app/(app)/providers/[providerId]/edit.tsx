@@ -12,6 +12,7 @@ import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { ProviderFormData } from "@/types/provider-form";
+import type { CreateProviderInput } from "@/types/provider";
 import * as Haptics from "expo-haptics";
 import { router, type Href, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
@@ -42,6 +43,8 @@ export default function EditProviderScreen() {
     }
 
     return {
+      isForAccountOwner: provider.isForAccountOwner,
+      careMemberIds: provider.careMembers.map((member) => member.id),
       firstName: provider.firstName ?? "",
       lastName: provider.lastName ?? "",
       clinicName: provider.clinicName ?? "",
@@ -53,6 +56,15 @@ export default function EditProviderScreen() {
       city: provider.city ?? "",
       state: getFullStateName(provider.state ?? ""),
       zipCode: provider.zipCode ?? "",
+      scheduleAnswer: provider.visitSchedule ? "annual_months" : "none",
+      annualMonths: provider.visitSchedule?.annualMonths ?? [],
+      nextAppointmentStatus:
+        provider.visitSchedule?.configuredNextAppointmentStatus ??
+        provider.visitSchedule?.nextAppointmentStatus ??
+        "",
+      reminderLeadDays: provider.visitSchedule?.reminderLeadDays ?? 30,
+      secondReminderLeadDays:
+        provider.visitSchedule?.secondReminderLeadDays ?? null,
     };
   }, [provider]);
   const appointmentCount = appointments.filter(
@@ -95,7 +107,7 @@ export default function EditProviderScreen() {
       : [provider.firstName, provider.lastName].filter(Boolean).join(" ");
   const providerTypeLabel = provider.type === "clinic" ? "Clinic" : "Provider";
 
-  async function handleUpdateProvider(formData: ProviderFormData) {
+  async function handleUpdateProvider(providerData: CreateProviderInput) {
     if (!token) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       showToast("Your session has expired. Please sign in again.", "error");
@@ -105,21 +117,8 @@ export default function EditProviderScreen() {
     try {
       const result = await updateProviderMutation.mutateAsync([
         {
+          ...providerData,
           providerId: numericProviderId,
-          type: formData.type || "provider",
-          firstName:
-            formData.type === "provider" ? formData.firstName : undefined,
-          lastName:
-            formData.type === "provider" ? formData.lastName : undefined,
-          clinicName:
-            formData.type === "clinic" ? formData.clinicName : undefined,
-          specialty: formData.specialty,
-          phoneNumber: formData.phoneNumber,
-          imageUrl: formData.imageUrl,
-          streetAddress: formData.streetAddress,
-          city: formData.city,
-          state: formData.state,
-          zipCode: formData.zipCode,
         },
         token,
       ]);

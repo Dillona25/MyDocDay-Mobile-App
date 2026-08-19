@@ -71,13 +71,14 @@ export const optionButtonTextActive = {
 
 export const submitButton = {
   alignItems: "center",
-  backgroundColor: colors.secondary,
+  backgroundColor: colors.primary,
   borderRadius: 8,
   paddingVertical: 14,
 } as const;
 
 export const submitButtonText = {
-  color: colors.primary,
+  color: "#ffffff",
+  fontFamily: fonts.body,
   fontSize: 16,
-  fontWeight: "600",
+  fontWeight: fontWeights.semibold,
 } as const;

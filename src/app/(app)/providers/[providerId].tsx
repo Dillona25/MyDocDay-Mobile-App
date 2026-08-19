@@ -6,6 +6,7 @@ import { useProviders } from "@/hooks/useProviders";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { Appointment } from "@/types/appointment";
+import type { ProviderVisitSchedule } from "@/types/provider";
 import { Image } from "expo-image";
 import { router, type Href, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -226,8 +227,12 @@ export default function ProviderDetailsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionEyebrow}>Contact and location</Text>
-          <Text style={styles.sectionTitle}>Provider information</Text>
+          <Text style={styles.sectionEyebrow}>Care team details</Text>
+          <Text style={styles.sectionTitle}>{providerTypeLabel} information</Text>
+
+          {provider.visitSchedule ? (
+            <VisitScheduleSummary schedule={provider.visitSchedule} />
+          ) : null}
 
           <View style={styles.detailList}>
             <DetailRow label="Specialty" value={provider.specialty} />
@@ -418,6 +423,153 @@ function PhoneDetailRow({ phoneNumber }: { phoneNumber: string }) {
   );
 }
 
+function VisitScheduleSummary({
+  schedule,
+}: {
+  schedule: ProviderVisitSchedule;
+}) {
+  const monthSummary = formatMonthList(schedule.annualMonths);
+  const appointmentStatus = getAppointmentStatusLabel(
+    schedule.nextAppointmentStatus,
+  );
+  const scheduleOwner = schedule.careMember
+    ? schedule.careMember.firstName
+    : "You";
+
+  return (
+    <View style={styles.scheduleSummary}>
+      <View style={styles.scheduleHeader}>
+        <View style={styles.scheduleIconFrame}>
+          <Image
+            contentFit="contain"
+            source={require("../../../assets/calendar-solid-full.svg")}
+            style={styles.scheduleIcon}
+          />
+        </View>
+        <View style={styles.scheduleHeadingGroup}>
+          <Text style={styles.scheduleEyebrow}>Visit schedule saved</Text>
+          <Text style={styles.scheduleHeadline}>
+            Usually {monthSummary}
+          </Text>
+        </View>
+        <View style={styles.scheduleStatus}>
+          <View
+            style={[
+              styles.scheduleStatusDot,
+              !schedule.isEnabled ? styles.scheduleStatusDotPaused : null,
+            ]}
+          />
+          <Text style={styles.scheduleStatusText}>
+            {schedule.isEnabled ? "On" : "Paused"}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.scheduleDetails}>
+        {schedule.nextVisitDueDate ? (
+          <ScheduleDetail
+            label="Next visit window"
+            value={formatMonthYear(schedule.nextVisitDueDate)}
+          />
+        ) : null}
+        <ScheduleDetail label="Appointment" value={appointmentStatus} />
+        {schedule.nextAppointmentStatus === "not_scheduled" ? (
+          <ScheduleDetail
+            label={
+              schedule.secondReminderLeadDays === null ||
+              schedule.secondReminderLeadDays === undefined
+                ? "Reminder"
+                : "Reminders"
+            }
+            value={formatReminderSchedule(schedule)}
+          />
+        ) : null}
+        <ScheduleDetail label="Schedule for" value={scheduleOwner} />
+      </View>
+    </View>
+  );
+}
+
+function ScheduleDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.scheduleDetailRow}>
+      <Text style={styles.scheduleDetailLabel}>{label}</Text>
+      <Text style={styles.scheduleDetailValue}>{value}</Text>
+    </View>
+  );
+}
+
+const monthNames = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
+
+function formatMonthList(months: number[]): string {
+  const names = months
+    .map((month) => monthNames[month - 1])
+    .filter((month): month is (typeof monthNames)[number] => Boolean(month));
+
+  if (names.length <= 1) return names[0] ?? "your selected months";
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+
+  return `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
+}
+
+function formatMonthYear(date: string): string {
+  const [year, month] = date.slice(0, 10).split("-").map(Number);
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, 1)));
+}
+
+function getAppointmentStatusLabel(
+  status: ProviderVisitSchedule["nextAppointmentStatus"],
+): string {
+  switch (status) {
+    case "scheduled":
+      return "Next visit is already booked";
+    case "not_scheduled":
+      return "Not booked yet";
+    case "not_needed":
+      return "No next appointment needed";
+    default:
+      return "Next visit is not confirmed";
+  }
+}
+
+function formatReminderLead(days: number | null): string {
+  if (days === 0) return "On the visit month";
+  if (days === 7) return "1 week before";
+  if (days === 14) return "2 weeks before";
+  if (days === 30 || days === null) return "1 month before";
+
+  return `${days} days before`;
+}
+
+function formatReminderSchedule(schedule: ProviderVisitSchedule): string {
+  const leadTimes = [
+    schedule.reminderLeadDays ?? 30,
+    schedule.secondReminderLeadDays,
+  ]
+    .filter((days): days is number => typeof days === "number")
+    .sort((left, right) => right - left);
+
+  return leadTimes.map(formatReminderLead).join(", ");
+}
+
 const styles = StyleSheet.create({
   screen: {
     backgroundColor: "#f4f7fa",
@@ -485,7 +637,7 @@ const styles = StyleSheet.create({
   },
   editButton: {
     alignItems: "center",
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.primary,
     borderRadius: 8,
     flex: 1,
     justifyContent: "center",
@@ -517,6 +669,101 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: fontWeights.semibold,
     marginTop: 3,
+  },
+  scheduleSummary: {
+    backgroundColor: "#edf9f8",
+    borderColor: "rgba(28, 184, 178, 0.28)",
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 14,
+    padding: 14,
+  },
+  scheduleHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+  },
+  scheduleIconFrame: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderRadius: 8,
+    height: 40,
+    justifyContent: "center",
+    width: 40,
+  },
+  scheduleIcon: {
+    height: 18,
+    tintColor: colors.secondary,
+    width: 18,
+  },
+  scheduleHeadingGroup: {
+    flex: 1,
+    minWidth: 0,
+  },
+  scheduleEyebrow: {
+    color: "#39716f",
+    fontFamily: fonts.body,
+    fontSize: 10,
+    fontWeight: fontWeights.bold,
+    textTransform: "uppercase",
+  },
+  scheduleHeadline: {
+    color: colors.primary,
+    fontFamily: fonts.heading,
+    fontSize: 15,
+    fontWeight: fontWeights.semibold,
+    lineHeight: 20,
+    marginTop: 2,
+  },
+  scheduleStatus: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 5,
+  },
+  scheduleStatusDot: {
+    backgroundColor: colors.secondary,
+    borderRadius: 4,
+    height: 8,
+    width: 8,
+  },
+  scheduleStatusDotPaused: {
+    backgroundColor: "#8a96a8",
+  },
+  scheduleStatusText: {
+    color: "#39716f",
+    fontFamily: fonts.body,
+    fontSize: 11,
+    fontWeight: fontWeights.bold,
+  },
+  scheduleDetails: {
+    borderTopColor: "rgba(31, 53, 87, 0.1)",
+    borderTopWidth: 1,
+    gap: 10,
+    marginTop: 13,
+    paddingTop: 13,
+  },
+  scheduleDetailRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "space-between",
+  },
+  scheduleDetailLabel: {
+    color: "#657487",
+    fontFamily: fonts.body,
+    fontSize: 11,
+    fontWeight: fontWeights.semibold,
+    lineHeight: 17,
+    width: 104,
+  },
+  scheduleDetailValue: {
+    color: colors.primary,
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: fontWeights.semibold,
+    lineHeight: 17,
+    textAlign: "right",
   },
   detailList: {
     backgroundColor: "#ffffff",
