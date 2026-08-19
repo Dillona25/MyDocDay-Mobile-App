@@ -146,8 +146,9 @@ export default function EditFamilyMemberScreen() {
             <View style={styles.dangerSection}>
               <Text style={styles.dangerTitle}>Remove Family Member</Text>
               <Text style={styles.dangerText}>
-                Remove {displayName} from your active family list. Their record
-                will be archived.
+                Removing {displayName} also removes their medications,
+                appointments, and Health Actions. Providers shared with other
+                people will stay available.
               </Text>
               <HapticButton
                 onPress={() => setRemoveModalVisible(true)}

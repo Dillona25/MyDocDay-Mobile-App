@@ -40,8 +40,10 @@ export function RemoveFamilyMemberModal({
           </View>
           <Text style={styles.title}>Remove {displayName}?</Text>
           <Text style={styles.description}>
-            This removes them from your active family list. Their record and
-            existing care history remain archived.
+            This permanently removes their medications, appointments, and
+            Health Actions. Providers or clinics used only by {displayName}
+            will also be removed. Shared providers stay available to everyone
+            else. This cannot be undone.
           </Text>
           <View style={styles.actionRow}>
             <HapticButton
@@ -57,7 +59,7 @@ export function RemoveFamilyMemberModal({
               style={[styles.removeButton, isRemoving ? styles.disabled : null]}
             >
               <Text style={styles.removeButtonText}>
-                {isRemoving ? "Removing..." : "Remove"}
+                {isRemoving ? "Removing..." : "Remove Member"}
               </Text>
             </HapticButton>
           </View>
