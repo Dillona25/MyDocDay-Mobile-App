@@ -1,6 +1,7 @@
 import { AppointmentWidget } from "@/components/appointments/appointment-widget";
 import { HapticButton } from "@/components/common/HapticButton";
 import { UserBar } from "@/components/dashboard/user-bar";
+import { FamilyWidget } from "@/components/family/family-widget";
 import { ProviderWidget } from "@/components/providers/provider-widget";
 import { ReminderWidget } from "@/components/reminders/reminder-widget";
 import { useProviders } from "@/hooks/useProviders";
@@ -96,6 +97,8 @@ export default function DashboardScreen() {
               </HapticButton>
             ) : null}
           </View>
+
+          <FamilyWidget />
         </View>
       </ScrollView>
     </SafeAreaView>

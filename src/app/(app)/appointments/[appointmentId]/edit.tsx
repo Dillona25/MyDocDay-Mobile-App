@@ -39,6 +39,9 @@ export default function EditAppointmentScreen() {
     }
 
     return {
+      careMemberId: appointment.careMemberId
+        ? String(appointment.careMemberId)
+        : "self",
       title: appointment.title,
       date: appointment.date.slice(0, 10),
       startTime: appointment.startTime.slice(0, 5),
@@ -100,6 +103,10 @@ export default function EditAppointmentScreen() {
     try {
       const result = await updateAppointmentMutation.mutateAsync([
         {
+          careMemberId:
+            formData.careMemberId === "self"
+              ? undefined
+              : Number(formData.careMemberId),
           appointmentId: numericAppointmentId,
           title: formData.title.trim(),
           date: formData.date.slice(0, 10),

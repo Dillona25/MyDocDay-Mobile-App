@@ -1,5 +1,6 @@
 import { formatProviderLocation } from "@/api/providers/provider-location";
 import { useProviders } from "@/hooks/useProviders";
+import { useCareMembers } from "@/hooks/useCareMembers";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { Appointment } from "@/types/appointment";
@@ -49,6 +50,7 @@ export function AppointmentCard({
   variant = "full",
 }: AppointmentCardProps) {
   const { providers } = useProviders();
+  const { careMembers } = useCareMembers();
   const linkedProvider = providers.find(
     (provider) => provider.id === appointment.providerId,
   );
@@ -57,6 +59,10 @@ export function AppointmentCard({
     (linkedProvider ? formatProviderLocation(linkedProvider) : null);
   const appointmentTypeLabel =
     appointment.appointmentType === "telehealth" ? "Telehealth" : "In Person";
+  const assignedCareMember =
+    appointment.careMember ??
+    careMembers.find((member) => member.id === appointment.careMemberId);
+  const careMemberName = assignedCareMember?.firstName;
   const providerLabel =
     appointment.providerType === "clinic" ? "Clinic" : "Provider";
   const appointmentTypeIcon =
@@ -108,11 +114,16 @@ export function AppointmentCard({
             </Text>
           </View>
 
-          <Text numberOfLines={1} style={styles.compactMeta}>
-            {[appointmentTypeLabel, appointment.doctorName]
-              .filter(Boolean)
-              .join(" • ")}
-          </Text>
+          <View style={styles.compactMetaRow}>
+            <Text ellipsizeMode="tail" numberOfLines={1} style={styles.compactMeta}>
+              {appointment.doctorName ?? providerLabel}
+            </Text>
+            {careMemberName ? (
+              <FamilyAssignee includeFor name={careMemberName} />
+            ) : (
+              <Text style={styles.compactOwner}>For Me</Text>
+            )}
+          </View>
         </View>
 
       </HapticButton>
@@ -130,18 +141,21 @@ export function AppointmentCard({
       ]}
     >
       <View style={styles.header}>
-        <Text style={styles.widgetLabel}>Appointment</Text>
-        {onDelete ? (
-          <Pressable
-            accessibilityLabel={`Delete ${appointment.title}`}
-            onPress={(event) => {
-              event.stopPropagation();
-              onDelete();
-            }}
-          >
-            <Text style={styles.deleteText}>Delete</Text>
-          </Pressable>
-        ) : null}
+        <Text numberOfLines={1} style={styles.widgetLabel}>Appointment</Text>
+        <View style={styles.headerActions}>
+          {careMemberName ? <FamilyAssignee name={careMemberName} /> : null}
+          {onDelete ? (
+            <Pressable
+              accessibilityLabel={`Delete ${appointment.title}`}
+              onPress={(event) => {
+                event.stopPropagation();
+                onDelete();
+              }}
+            >
+              <Text style={styles.deleteText}>Delete</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
 
       <Text numberOfLines={1} style={styles.title}>
@@ -191,6 +205,27 @@ export function AppointmentCard({
         </View>
       ) : null}
     </HapticButton>
+  );
+}
+
+function FamilyAssignee({
+  includeFor = false,
+  name,
+}: {
+  includeFor?: boolean;
+  name: string;
+}) {
+  return (
+    <View accessibilityLabel={`For ${name}`} accessible style={styles.assignee}>
+      <Image
+        contentFit="contain"
+        source={require("../../assets/people-roof-solid-full.svg")}
+        style={styles.assigneeIcon}
+      />
+      <Text numberOfLines={1} style={styles.assigneeText}>
+        {includeFor ? `For ${name}` : name}
+      </Text>
+    </View>
   );
 }
 
@@ -263,21 +298,65 @@ const styles = StyleSheet.create({
   },
   compactMeta: {
     color: "#536173",
+    flex: 1,
     fontFamily: fonts.body,
     fontSize: 13,
+  },
+  compactMetaRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 7,
     marginTop: 3,
+    minWidth: 0,
+  },
+  compactOwner: {
+    color: "#536173",
+    flexShrink: 0,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    fontWeight: fontWeights.semibold,
   },
   header: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
   },
+  headerActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexShrink: 0,
+    gap: 10,
+  },
   widgetLabel: {
     color: colors.secondary,
+    flex: 1,
     fontFamily: fonts.body,
     fontSize: 12,
     fontWeight: fontWeights.semibold,
+    marginRight: 8,
     textTransform: "uppercase",
+  },
+  assignee: {
+    alignItems: "center",
+    backgroundColor: "rgba(28, 184, 178, 0.1)",
+    borderRadius: 5,
+    flexDirection: "row",
+    gap: 4,
+    maxWidth: 100,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  assigneeIcon: {
+    height: 10,
+    tintColor: "#39716f",
+    width: 11,
+  },
+  assigneeText: {
+    color: "#39716f",
+    flexShrink: 1,
+    fontFamily: fonts.body,
+    fontSize: 10,
+    fontWeight: fontWeights.bold,
   },
   deleteText: {
     color: "#94a3b8",

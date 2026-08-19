@@ -1,6 +1,8 @@
 import { DateTimePickerModal } from "@/components/common/DateTimePickerModal";
 import { HapticButton } from "@/components/common/HapticButton";
 import { PickerModal } from "@/components/common/PickerModal";
+import { CarePersonSelector } from "@/components/family/care-person-selector";
+import { useCareMembers } from "@/hooks/useCareMembers";
 import { useCreateCareTask } from "@/hooks/useCreateCareTask";
 import { useProviders } from "@/hooks/useProviders";
 import { useUpdateCareTask } from "@/hooks/useUpdateCareTask";
@@ -79,6 +81,7 @@ function formatTimeForDisplay(date: Date) {
 
 function createInitialFormData(date: Date): CareTaskFormData {
   return {
+    careMemberId: "self",
     title: "",
     notes: "",
     dueDate: formatDateForApi(date),
@@ -89,6 +92,7 @@ function createInitialFormData(date: Date): CareTaskFormData {
 
 function createEditFormData(task: CareTask): CareTaskFormData {
   return {
+    careMemberId: task.careMemberId ? String(task.careMemberId) : "self",
     title: task.title,
     notes: task.notes ?? "",
     dueDate: task.dueDate,
@@ -143,6 +147,11 @@ export default function AddCareTaskForm({
   const [showProviderPicker, setShowProviderPicker] = useState(false);
   const [draftProviderId, setDraftProviderId] = useState("");
   const { token } = useAuth();
+  const {
+    careMembers,
+    error: careMembersError,
+    isLoading: careMembersLoading,
+  } = useCareMembers();
   const { providers, isLoading: providersLoading } = useProviders();
   const createTaskMutation = useCreateCareTask();
   const updateTaskMutation = useUpdateCareTask();
@@ -152,11 +161,20 @@ export default function AddCareTaskForm({
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { isSubmitting, isValid },
   } = useForm<CareTaskFormData>({
     defaultValues: initialFormData,
     mode: "onChange",
   });
+  const selectedCareMemberId = watch("careMemberId");
+  const availableProviders = providers.filter((provider) =>
+    selectedCareMemberId === "self"
+      ? provider.isForAccountOwner
+      : provider.careMembers.some(
+          (member) => String(member.id) === selectedCareMemberId,
+        ),
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -229,6 +247,10 @@ export default function AddCareTaskForm({
 
     try {
       const reminderData = {
+        careMemberId:
+          formData.careMemberId === "self"
+            ? undefined
+            : Number(formData.careMemberId),
         title: formData.title.trim(),
         notes: formData.notes.trim() || undefined,
         dueDate: formData.dueDate,
@@ -280,6 +302,36 @@ export default function AddCareTaskForm({
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
+      <Controller
+        control={control}
+        name="careMemberId"
+        rules={{ required: "Choose who this reminder is for." }}
+        render={({ field: personField, fieldState }) => (
+          <CarePersonSelector
+            careMembers={careMembers}
+            errorMessage={
+              fieldState.error?.message || careMembersError || undefined
+            }
+            isLoading={careMembersLoading}
+            onChange={({ isForAccountOwner, careMemberIds }) => {
+              const nextValue = isForAccountOwner
+                ? "self"
+                : String(careMemberIds[0]);
+              personField.onChange(nextValue);
+              personField.onBlur();
+              setValue("providerId", "", {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
+            }}
+            selectedCareMemberIds={
+              personField.value === "self" ? [] : [Number(personField.value)]
+            }
+            selectedForAccountOwner={personField.value === "self"}
+          />
+        )}
+      />
+
       <ControlledFloatingInput
         control={control}
         labelText="Reminder Title"
@@ -389,7 +441,7 @@ export default function AddCareTaskForm({
         control={control}
         name="providerId"
         render={({ field: providerField }) => {
-          const provider = providers.find(
+          const provider = availableProviders.find(
             (option) => String(option.id) === providerField.value,
           );
           const providerName = provider
@@ -442,7 +494,7 @@ export default function AddCareTaskForm({
                   style={styles.providerPicker}
                 >
                   <Picker.Item label="No provider linked" value="" />
-                  {providers.map((option) => {
+                  {availableProviders.map((option) => {
                     const displayName =
                       option.type === "clinic"
                         ? (option.clinicName ?? "Clinic")

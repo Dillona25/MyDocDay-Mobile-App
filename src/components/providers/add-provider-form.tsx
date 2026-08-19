@@ -1,8 +1,10 @@
 import { HapticButton } from "@/components/common/HapticButton";
 import { PickerModal } from "@/components/common/PickerModal";
+import { CarePersonSelector } from "@/components/family/care-person-selector";
 import { providerTypes } from "@/data/providerTypes";
 import { usStates } from "@/data/usStates";
 import { useCreateProvider } from "@/hooks/useCreateProvider";
+import { useCareMembers } from "@/hooks/useCareMembers";
 import { useAuth } from "@/store/auth/AuthContext";
 import { useToast } from "@/store/ToastContext";
 import { buttonDisabled } from "@/theme/buttons";
@@ -103,6 +105,11 @@ export default function AddProviderForm({
 }: AddProviderFormProps) {
   const formDefaults = getProviderFormDefaults(initialData);
   const { token } = useAuth();
+  const {
+    careMembers,
+    error: careMembersError,
+    isLoading: careMembersLoading,
+  } = useCareMembers();
   const createProviderMutation = useCreateProvider();
   const { showToast } = useToast();
   const [showStatePicker, setShowStatePicker] = useState(false);
@@ -120,6 +127,7 @@ export default function AddProviderForm({
     mode: "onChange",
   });
   const providerType = watch("type");
+  const isForAccountOwner = watch("isForAccountOwner");
   const scheduleAnswer = watch("scheduleAnswer");
   const nextAppointmentStatus = watch("nextAppointmentStatus");
   const reminderLeadDays = watch("reminderLeadDays");
@@ -186,6 +194,38 @@ export default function AddProviderForm({
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
+      <Controller
+        control={control}
+        name="careMemberIds"
+        rules={{
+          validate: (ids) =>
+            isForAccountOwner || ids.length > 0 || "Choose at least one person.",
+        }}
+        render={({ field: membersField, fieldState }) => (
+          <CarePersonSelector
+            careMembers={careMembers}
+            errorMessage={
+              fieldState.error?.message || careMembersError || undefined
+            }
+            isLoading={careMembersLoading}
+            multiple
+            onChange={({
+              isForAccountOwner: nextIsForAccountOwner,
+              careMemberIds: nextCareMemberIds,
+            }) => {
+              setValue("isForAccountOwner", nextIsForAccountOwner, {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
+              membersField.onChange(nextCareMemberIds);
+              membersField.onBlur();
+            }}
+            selectedCareMemberIds={membersField.value}
+            selectedForAccountOwner={isForAccountOwner}
+          />
+        )}
+      />
+
       <Controller
         control={control}
         name="type"

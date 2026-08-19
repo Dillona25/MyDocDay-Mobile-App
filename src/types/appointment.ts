@@ -6,6 +6,13 @@ export type Appointment = {
   id: number;
   userId: number;
   providerId: number | null;
+  careMemberId: number | null;
+  careMember: {
+    id: number;
+    firstName: string;
+    lastName: string | null;
+    relationship: string;
+  } | null;
   title: string;
   date: string;
   startTime: string;
@@ -24,6 +31,7 @@ export type GetAppointmentResponse = {
 };
 
 export type CreateAppointmentInput = {
+  careMemberId?: number;
   title: string;
   date: string;
   startTime: string;

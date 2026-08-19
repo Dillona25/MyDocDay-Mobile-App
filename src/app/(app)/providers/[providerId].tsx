@@ -47,6 +47,12 @@ export default function ProviderDetailsScreen() {
     returnTo?: string;
   }>();
   const numericProviderId = Number(providerId);
+  const providerReturnHref =
+    returnTo?.startsWith("/family/")
+      ? (returnTo as Href)
+      : returnTo === "/dashboard"
+        ? ("/dashboard" as Href)
+        : ("/providers" as Href);
   const { error, isLoading, providers } = useProviders();
   const {
     appointments,
@@ -186,14 +192,20 @@ export default function ProviderDetailsScreen() {
     .join(" ");
   const upcomingCount = upcomingAppointments.length;
   const pastCount = pastAppointments.length;
+  const providerAssignees = [
+    provider.isForAccountOwner ? "Me" : null,
+    ...provider.careMembers.map((member) => member.firstName),
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.backNavigation}>
           <BackButton
-            href={returnTo === "/dashboard" ? "/dashboard" : "/providers"}
-            navigationMode={returnTo === "/dashboard" ? "navigate" : "dismiss"}
+            href={providerReturnHref}
+            navigationMode={returnTo ? "navigate" : "dismiss"}
           />
         </View>
         <View style={styles.identitySection}>
@@ -235,6 +247,7 @@ export default function ProviderDetailsScreen() {
           ) : null}
 
           <View style={styles.detailList}>
+            <DetailRow label="For" value={providerAssignees} />
             <DetailRow label="Specialty" value={provider.specialty} />
             {provider.phoneNumber ? (
               <PhoneDetailRow phoneNumber={provider.phoneNumber} />

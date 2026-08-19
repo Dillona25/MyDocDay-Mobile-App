@@ -27,6 +27,12 @@ const accountItems: AccountItem[] = [
     route: "/edit-profile",
   },
   {
+    label: "Manage Family",
+    description: "People whose care you help organize",
+    icon: require("../../assets/people-roof-solid-full.svg"),
+    route: "/family" as Href,
+  },
+  {
     label: "Settings",
     description: "Notifications and app preferences",
     icon: require("../../assets/gear-solid-full.svg"),

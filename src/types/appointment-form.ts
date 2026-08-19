@@ -1,4 +1,5 @@
 export type AppointmentFormData = {
+  careMemberId: string;
   title: string;
   date: string;
   startTime: string;

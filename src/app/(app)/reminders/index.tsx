@@ -136,6 +136,7 @@ export default function RemindersScreen() {
 
                           return (
                             <CareTaskCard
+                              careMemberName={task.careMember?.firstName}
                               dueDate={task.dueDate}
                               dueLabel={due.label}
                               dueTone={due.tone}

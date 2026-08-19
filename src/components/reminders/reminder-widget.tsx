@@ -102,6 +102,7 @@ export function ReminderWidget() {
           {visibleReminders.map((task) => {
             const due = getDuePresentation(task.dueDate);
             const metadata = [
+              task.careMember ? `For ${task.careMember.firstName}` : undefined,
               formatTaskTime(task.dueTime),
               task.providerName ?? undefined,
             ]

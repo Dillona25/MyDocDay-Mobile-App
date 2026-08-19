@@ -5,6 +5,7 @@ import { Image } from "expo-image";
 import { StyleSheet, Text, View } from "react-native";
 
 type CareTaskCardProps = {
+  careMemberName?: string;
   title: string;
   dueDate: string;
   dueLabel: string;
@@ -18,6 +19,7 @@ type CareTaskCardProps = {
 };
 
 export function CareTaskCard({
+  careMemberName,
   title,
   dueDate,
   dueLabel,
@@ -80,24 +82,42 @@ export function CareTaskCard({
           <Text numberOfLines={2} style={styles.title}>
             {title}
           </Text>
-          <View
-            style={[
-              styles.dueBadge,
-              dueTone === "safe" ? styles.dueBadgeSafe : null,
-              dueTone === "warning" ? styles.dueBadgeWarning : null,
-              dueTone === "urgent" ? styles.dueBadgeUrgent : null,
-            ]}
-          >
-            <Text
+          <View style={styles.titleActions}>
+            {careMemberName ? (
+              <View
+                accessibilityLabel={`For ${careMemberName}`}
+                accessible
+                style={styles.assignee}
+              >
+                <Image
+                  contentFit="contain"
+                  source={require("../../assets/people-roof-solid-full.svg")}
+                  style={styles.assigneeIcon}
+                />
+                <Text ellipsizeMode="tail" numberOfLines={1} style={styles.assigneeText}>
+                  {careMemberName}
+                </Text>
+              </View>
+            ) : null}
+            <View
               style={[
-                styles.dueText,
-                dueTone === "safe" ? styles.dueTextSafe : null,
-                dueTone === "warning" ? styles.dueTextWarning : null,
-                dueTone === "urgent" ? styles.dueTextUrgent : null,
+                styles.dueBadge,
+                dueTone === "safe" ? styles.dueBadgeSafe : null,
+                dueTone === "warning" ? styles.dueBadgeWarning : null,
+                dueTone === "urgent" ? styles.dueBadgeUrgent : null,
               ]}
             >
-              {dueLabel}
-            </Text>
+              <Text
+                style={[
+                  styles.dueText,
+                  dueTone === "safe" ? styles.dueTextSafe : null,
+                  dueTone === "warning" ? styles.dueTextWarning : null,
+                  dueTone === "urgent" ? styles.dueTextUrgent : null,
+                ]}
+              >
+                {dueLabel}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -265,6 +285,38 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     marginTop: 5,
+  },
+  titleActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexShrink: 0,
+    gap: 6,
+    maxWidth: "58%",
+  },
+  assignee: {
+    alignItems: "center",
+    backgroundColor: "rgba(28, 184, 178, 0.1)",
+    borderRadius: 5,
+    flexDirection: "row",
+    flexShrink: 1,
+    gap: 4,
+    maxWidth: 86,
+    minWidth: 0,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+  },
+  assigneeIcon: {
+    height: 10,
+    tintColor: "#39716f",
+    width: 11,
+  },
+  assigneeText: {
+    color: "#39716f",
+    flexShrink: 1,
+    fontFamily: fonts.body,
+    fontSize: 10,
+    fontWeight: fontWeights.bold,
+    minWidth: 0,
   },
   providerRow: {
     alignItems: "center",
