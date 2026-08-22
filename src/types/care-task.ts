@@ -6,6 +6,13 @@ export type CareTask = {
   id: number;
   userId: number;
   providerId: number | null;
+  careMemberId: number | null;
+  careMember: {
+    id: number;
+    firstName: string;
+    lastName: string | null;
+    relationship: string;
+  } | null;
   providerName: string | null;
   providerType: ProviderType | null;
   title: string;
@@ -24,6 +31,7 @@ export type GetCareTasksResponse = {
 };
 
 export type CreateCareTaskInput = {
+  careMemberId?: number;
   providerId?: number;
   title: string;
   notes?: string;

@@ -45,7 +45,15 @@ export async function createAppointment(
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.message ?? "Unable to create appointment");
+    const validationMessage = Object.values(
+      (data.errors ?? {}) as Record<string, string[]>,
+    )
+      .flat()
+      .find(Boolean);
+
+    throw new Error(
+      validationMessage ?? data.message ?? "Unable to create appointment",
+    );
   }
 
   return data;

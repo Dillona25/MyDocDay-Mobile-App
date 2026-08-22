@@ -4,8 +4,10 @@ import { formatProviderLocation } from "@/api/providers/provider-location";
 import { BackButton } from "@/components/common/BackButton";
 import { HapticButton } from "@/components/common/HapticButton";
 import { useAppointments } from "@/hooks/useAppointments";
+import { useCareMembers } from "@/hooks/useCareMembers";
 import { useProviders } from "@/hooks/useProviders";
 import { useToast } from "@/store/ToastContext";
+import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { Appointment } from "@/types/appointment";
@@ -60,19 +62,53 @@ function formatAppointmentTime(startTime: string) {
   });
 }
 
+function formatRecurrence(appointment: Appointment) {
+  if (appointment.recurrenceStatus === "not_recurring") {
+    return "This care does not repeat";
+  }
+  if (appointment.recurrenceStatus === "unsure" || !appointment.recurrence) {
+    return "Not sure yet";
+  }
+
+  const { intervalValue, intervalUnit } = appointment.recurrence;
+  const unit = intervalValue === 1 ? intervalUnit.slice(0, -1) : intervalUnit;
+  return `Every ${intervalValue} ${unit}`;
+}
+
+function formatReminderLead(days: number | null) {
+  if (days === null) return "No scheduling lead time saved";
+  if (days === 14) return "2 weeks before";
+  if (days === 30) return "1 month before";
+  if (days === 60) return "2 months before";
+  return `${days} days before`;
+}
+
 export default function AppointmentDetailsScreen() {
   const { appointmentId, returnTo } = useLocalSearchParams<{
     appointmentId: string;
     returnTo?: string;
   }>();
   const numericAppointmentId = Number(appointmentId);
+  const appointmentReturnHref =
+    returnTo?.startsWith("/family/")
+      ? (returnTo as Href)
+      : returnTo === "/dashboard"
+        ? ("/dashboard" as Href)
+        : ("/appointments" as Href);
   const { appointments, aptError, isLoadingApt } = useAppointments();
+  const { careMembers } = useCareMembers();
   const { providers } = useProviders();
+  const { user } = useAuth();
   const { showToast } = useToast();
   const [isOpeningCalendar, setIsOpeningCalendar] = useState(false);
   const appointment = appointments.find(
     (appointmentItem) => appointmentItem.id === numericAppointmentId,
   );
+  const assignedCareMember =
+    appointment?.careMember ??
+    careMembers.find((member) => member.id === appointment?.careMemberId);
+  const assigneeName =
+    assignedCareMember?.firstName || user?.firstName || "Account owner";
   const linkedProvider = providers.find(
     (provider) => provider.id === appointment?.providerId,
   );
@@ -159,8 +195,8 @@ export default function AppointmentDetailsScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.backNavigation}>
           <BackButton
-            href={returnTo === "/dashboard" ? "/dashboard" : "/appointments"}
-            navigationMode={returnTo === "/dashboard" ? "navigate" : "dismiss"}
+            href={appointmentReturnHref}
+            navigationMode={returnTo ? "navigate" : "dismiss"}
           />
         </View>
         <View style={styles.identitySection}>
@@ -178,6 +214,14 @@ export default function AppointmentDetailsScreen() {
           </Text>
           <Text style={styles.title}>{appointment.title}</Text>
           <Text style={styles.type}>{appointmentTypeLabel}</Text>
+          <View style={styles.assigneeChip}>
+            <Image
+              contentFit="contain"
+              source={require("../../../assets/people-roof-solid-full.svg")}
+              style={styles.assigneeIcon}
+            />
+            <Text style={styles.assigneeText}>For {assigneeName}</Text>
+          </View>
         </View>
 
         <View style={styles.actionRow}>
@@ -224,6 +268,7 @@ export default function AppointmentDetailsScreen() {
           <Text style={styles.sectionTitle}>Appointment information</Text>
 
           <View style={styles.detailList}>
+            <DetailRow label="For" value={assigneeName} />
             <DetailRow
               label="Date"
               value={formatAppointmentDate(appointment.date)}
@@ -237,6 +282,15 @@ export default function AppointmentDetailsScreen() {
               <DetailRow label={providerLabel} value={appointment.doctorName} />
             ) : null}
             {location ? <DetailRow label="Location" value={location} /> : null}
+            <DetailRow label="Ongoing care" value={formatRecurrence(appointment)} />
+            {appointment.recurrence ? (
+              <DetailRow
+                label="Schedule reminder"
+                value={formatReminderLead(
+                  appointment.recurrence.reminderLeadDays,
+                )}
+              />
+            ) : null}
           </View>
         </View>
       </ScrollView>
@@ -309,6 +363,27 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 15,
     marginTop: 4,
+  },
+  assigneeChip: {
+    alignItems: "center",
+    backgroundColor: "rgba(28, 184, 178, 0.1)",
+    borderRadius: 6,
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 10,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  assigneeIcon: {
+    height: 12,
+    tintColor: "#39716f",
+    width: 13,
+  },
+  assigneeText: {
+    color: "#39716f",
+    fontFamily: fonts.body,
+    fontSize: 11,
+    fontWeight: fontWeights.bold,
   },
   actionRow: {
     alignItems: "center",

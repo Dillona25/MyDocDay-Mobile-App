@@ -3,6 +3,7 @@ import { BackButton } from "@/components/common/BackButton";
 import { HapticButton } from "@/components/common/HapticButton";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useProviders } from "@/hooks/useProviders";
+import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { Appointment } from "@/types/appointment";
@@ -42,11 +43,18 @@ function getAppointmentDateTime(appointment: Appointment) {
 }
 
 export default function ProviderDetailsScreen() {
+  const { user } = useAuth();
   const { providerId, returnTo } = useLocalSearchParams<{
     providerId: string;
     returnTo?: string;
   }>();
   const numericProviderId = Number(providerId);
+  const providerReturnHref =
+    returnTo?.startsWith("/family/")
+      ? (returnTo as Href)
+      : returnTo === "/dashboard"
+        ? ("/dashboard" as Href)
+        : ("/providers" as Href);
   const { error, isLoading, providers } = useProviders();
   const {
     appointments,
@@ -186,14 +194,22 @@ export default function ProviderDetailsScreen() {
     .join(" ");
   const upcomingCount = upcomingAppointments.length;
   const pastCount = pastAppointments.length;
+  const providerAssignees = [
+    provider.isForAccountOwner
+      ? user?.firstName || "Account owner"
+      : null,
+    ...provider.careMembers.map((member) => member.firstName),
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.backNavigation}>
           <BackButton
-            href={returnTo === "/dashboard" ? "/dashboard" : "/providers"}
-            navigationMode={returnTo === "/dashboard" ? "navigate" : "dismiss"}
+            href={providerReturnHref}
+            navigationMode={returnTo ? "navigate" : "dismiss"}
           />
         </View>
         <View style={styles.identitySection}>
@@ -235,6 +251,7 @@ export default function ProviderDetailsScreen() {
           ) : null}
 
           <View style={styles.detailList}>
+            <DetailRow label="For" value={providerAssignees} />
             <DetailRow label="Specialty" value={provider.specialty} />
             {provider.phoneNumber ? (
               <PhoneDetailRow phoneNumber={provider.phoneNumber} />
@@ -428,13 +445,14 @@ function VisitScheduleSummary({
 }: {
   schedule: ProviderVisitSchedule;
 }) {
+  const { user } = useAuth();
   const monthSummary = formatMonthList(schedule.annualMonths);
   const appointmentStatus = getAppointmentStatusLabel(
     schedule.nextAppointmentStatus,
   );
   const scheduleOwner = schedule.careMember
     ? schedule.careMember.firstName
-    : "You";
+    : user?.firstName || "Account owner";
 
   return (
     <View style={styles.scheduleSummary}>

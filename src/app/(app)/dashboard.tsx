@@ -1,10 +1,13 @@
 import { AppointmentWidget } from "@/components/appointments/appointment-widget";
 import { HapticButton } from "@/components/common/HapticButton";
 import { UserBar } from "@/components/dashboard/user-bar";
+import { CareScopeSelector } from "@/components/family/care-scope-selector";
+import { FamilyWidget } from "@/components/family/family-widget";
 import { ProviderWidget } from "@/components/providers/provider-widget";
 import { ReminderWidget } from "@/components/reminders/reminder-widget";
 import { useProviders } from "@/hooks/useProviders";
 import { useAuth } from "@/store/auth/AuthContext";
+import { useCareScope } from "@/store/care-scope/CareScopeContext";
 import { borderPrimary } from "@/theme/borders";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
@@ -17,11 +20,13 @@ const MAX_VISIBLE_PROVIDERS = 4;
 
 export default function DashboardScreen() {
   const { user } = useAuth();
+  const { matchesProvider, scope } = useCareScope();
   const { error, isLoading, providers } = useProviders();
   const [providerFilter, setProviderFilter] =
     useState<ProviderType>("provider");
   const filteredProviders = providers.filter(
-    (provider) => provider.type === providerFilter,
+    (provider) =>
+      provider.type === providerFilter && matchesProvider(provider),
   );
   const visibleProviders = filteredProviders.slice(0, MAX_VISIBLE_PROVIDERS);
   const hasMoreProviders = filteredProviders.length > MAX_VISIBLE_PROVIDERS;
@@ -32,6 +37,8 @@ export default function DashboardScreen() {
         <UserBar user={user} />
 
         <View style={styles.widgetContent}>
+          <CareScopeSelector />
+
           <ReminderWidget />
 
           <AppointmentWidget />
@@ -96,6 +103,8 @@ export default function DashboardScreen() {
               </HapticButton>
             ) : null}
           </View>
+
+          {scope.type !== "member" ? <FamilyWidget /> : null}
         </View>
       </ScrollView>
     </SafeAreaView>

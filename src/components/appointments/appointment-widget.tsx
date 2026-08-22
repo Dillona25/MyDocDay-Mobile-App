@@ -1,5 +1,6 @@
 import { AppointmentCard } from "@/components/appointments/appointment-card";
 import { useAppointments } from "@/hooks/useAppointments";
+import { useCareScope } from "@/store/care-scope/CareScopeContext";
 import { borderPrimary } from "@/theme/borders";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
@@ -38,6 +39,7 @@ function getAppointmentDays(currentDate: Date) {
 
 export function AppointmentWidget() {
   const { aptError, isLoadingApt, appointments } = useAppointments();
+  const { matchesCareMember } = useCareScope();
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const appointmentDays = useMemo(
     () => getAppointmentDays(currentDate),
@@ -50,7 +52,9 @@ export function AppointmentWidget() {
   const [selectedDayId, setSelectedDayId] = useState(appointmentDays[0]?.id);
   const selectedDay = appointmentDays.find((day) => day.id === selectedDayId);
   const selectedAppointments = appointments.filter(
-    (appointment) => appointment.date.slice(0, 10) === selectedDayId,
+    (appointment) =>
+      matchesCareMember(appointment.careMemberId) &&
+      appointment.date.slice(0, 10) === selectedDayId,
   );
   const visibleAppointments = selectedAppointments.slice(
     0,

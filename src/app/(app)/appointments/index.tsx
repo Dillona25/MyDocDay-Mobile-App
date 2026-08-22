@@ -1,7 +1,9 @@
 import { AppointmentCard } from "@/components/appointments/appointment-card";
 import { HapticButton } from "@/components/common/HapticButton";
 import { PickerModal } from "@/components/common/PickerModal";
+import { CareScopeSelector } from "@/components/family/care-scope-selector";
 import { useAppointments } from "@/hooks/useAppointments";
+import { useCareScope } from "@/store/care-scope/CareScopeContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { Appointment } from "@/types/appointment";
@@ -128,7 +130,16 @@ function getDayLabel(date: Date) {
 }
 
 export default function AppointmentsScreen() {
-  const { appointments, aptError, isLoadingApt } = useAppointments();
+  const { appointments: allAppointments, aptError, isLoadingApt } =
+    useAppointments();
+  const { matchesCareMember } = useCareScope();
+  const appointments = useMemo(
+    () =>
+      allAppointments.filter((appointment) =>
+        matchesCareMember(appointment.careMemberId),
+      ),
+    [allAppointments, matchesCareMember],
+  );
   const [activeFilter, setActiveFilter] =
     useState<AppointmentFilter>("upcoming");
   const [currentTime, setCurrentTime] = useState(() => new Date());
@@ -344,6 +355,8 @@ export default function AppointmentsScreen() {
             Keep every visit organized in one clear timeline.
           </Text>
         </View>
+
+        <CareScopeSelector />
 
         <View style={styles.filterRow}>
           {appointmentFilters.map((filter) => {
