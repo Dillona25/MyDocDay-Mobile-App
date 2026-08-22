@@ -10,6 +10,7 @@ import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { AppointmentFormData } from "@/types/appointment-form";
+import type { AppointmentRecurrence } from "@/types/appointment";
 import * as Haptics from "expo-haptics";
 import { router, type Href, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
@@ -20,6 +21,30 @@ import {
   Text,
   View,
 } from "react-native";
+
+function getRecurrencePattern(
+  recurrence: AppointmentRecurrence | null,
+): AppointmentFormData["recurrencePattern"] {
+  if (!recurrence) return "";
+  if (recurrence.intervalValue === 3 && recurrence.intervalUnit === "months") {
+    return "three_months";
+  }
+  if (recurrence.intervalValue === 6 && recurrence.intervalUnit === "months") {
+    return "six_months";
+  }
+  if (recurrence.intervalValue === 1 && recurrence.intervalUnit === "years") {
+    return "one_year";
+  }
+  return "custom";
+}
+
+function getReminderLeadValue(
+  reminderLeadDays: number | null | undefined,
+): AppointmentFormData["recurrenceReminderLeadDays"] {
+  if (reminderLeadDays === 14) return "14";
+  if (reminderLeadDays === 60) return "60";
+  return "30";
+}
 
 export default function EditAppointmentScreen() {
   const { appointmentId } = useLocalSearchParams<{ appointmentId: string }>();
@@ -58,6 +83,16 @@ export default function EditAppointmentScreen() {
         ? "covers"
         : "",
       providerVisitWindowDate: appointment.providerVisitWindowDate ?? null,
+      recurrenceStatus: appointment.recurrenceStatus,
+      recurrencePattern: getRecurrencePattern(appointment.recurrence),
+      recurrenceIntervalValue: String(
+        appointment.recurrence?.intervalValue ?? 6,
+      ),
+      recurrenceIntervalUnit:
+        appointment.recurrence?.intervalUnit ?? "months",
+      recurrenceReminderLeadDays: getReminderLeadValue(
+        appointment.recurrence?.reminderLeadDays,
+      ),
     };
   }, [appointment]);
 
@@ -92,6 +127,8 @@ export default function EditAppointmentScreen() {
   }
 
   const appointmentTitle = appointment.title;
+  const appointmentTimezone =
+    appointment.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   async function handleUpdateAppointment(formData: AppointmentFormData) {
     if (!token) {
@@ -111,6 +148,7 @@ export default function EditAppointmentScreen() {
           title: formData.title.trim(),
           date: formData.date.slice(0, 10),
           startTime: formData.startTime.slice(0, 5),
+          timezone: appointmentTimezone,
           appointmentType: formData.appointmentType || "in_person",
           providerId:
             formData.providerSelection === "saved" && formData.providerId
@@ -124,6 +162,17 @@ export default function EditAppointmentScreen() {
           providerVisitWindowDate:
             formData.providerVisitWindowResponse === "covers"
               ? formData.providerVisitWindowDate
+              : null,
+          recurrenceStatus: formData.recurrenceStatus || "unsure",
+          recurrence:
+            formData.recurrenceStatus === "recurring"
+              ? {
+                  intervalValue: Number(formData.recurrenceIntervalValue),
+                  intervalUnit: formData.recurrenceIntervalUnit,
+                  reminderLeadDays: Number(
+                    formData.recurrenceReminderLeadDays,
+                  ),
+                }
               : null,
         },
         token,

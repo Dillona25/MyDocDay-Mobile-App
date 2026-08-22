@@ -62,6 +62,27 @@ function formatAppointmentTime(startTime: string) {
   });
 }
 
+function formatRecurrence(appointment: Appointment) {
+  if (appointment.recurrenceStatus === "not_recurring") {
+    return "This care does not repeat";
+  }
+  if (appointment.recurrenceStatus === "unsure" || !appointment.recurrence) {
+    return "Not sure yet";
+  }
+
+  const { intervalValue, intervalUnit } = appointment.recurrence;
+  const unit = intervalValue === 1 ? intervalUnit.slice(0, -1) : intervalUnit;
+  return `Every ${intervalValue} ${unit}`;
+}
+
+function formatReminderLead(days: number | null) {
+  if (days === null) return "No scheduling lead time saved";
+  if (days === 14) return "2 weeks before";
+  if (days === 30) return "1 month before";
+  if (days === 60) return "2 months before";
+  return `${days} days before`;
+}
+
 export default function AppointmentDetailsScreen() {
   const { appointmentId, returnTo } = useLocalSearchParams<{
     appointmentId: string;
@@ -261,6 +282,15 @@ export default function AppointmentDetailsScreen() {
               <DetailRow label={providerLabel} value={appointment.doctorName} />
             ) : null}
             {location ? <DetailRow label="Location" value={location} /> : null}
+            <DetailRow label="Ongoing care" value={formatRecurrence(appointment)} />
+            {appointment.recurrence ? (
+              <DetailRow
+                label="Schedule reminder"
+                value={formatReminderLead(
+                  appointment.recurrence.reminderLeadDays,
+                )}
+              />
+            ) : null}
           </View>
         </View>
       </ScrollView>
