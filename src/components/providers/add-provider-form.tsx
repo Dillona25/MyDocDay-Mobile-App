@@ -1,9 +1,15 @@
 import { HapticButton } from "@/components/common/HapticButton";
 import { PickerModal } from "@/components/common/PickerModal";
+import { CarePersonSelector } from "@/components/family/care-person-selector";
 import { providerTypes } from "@/data/providerTypes";
 import { usStates } from "@/data/usStates";
 import { useCreateProvider } from "@/hooks/useCreateProvider";
+import { useCareMembers } from "@/hooks/useCareMembers";
 import { useAuth } from "@/store/auth/AuthContext";
+import {
+  useCareScope,
+  type CareScope,
+} from "@/store/care-scope/CareScopeContext";
 import { useToast } from "@/store/ToastContext";
 import { buttonDisabled } from "@/theme/buttons";
 import { colors } from "@/theme/colors";
@@ -26,7 +32,13 @@ import type { CreateProviderInput } from "@/types/provider";
 import { Picker } from "@react-native-picker/picker";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect } from "expo-router";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   Controller,
   type Control,
@@ -96,13 +108,23 @@ type AddProviderFormProps = {
 
 export default function AddProviderForm({
   footer,
-  initialData = initialProviderFormData,
+  initialData,
   mode = "create",
   onCreateSuccess,
   onEditSubmit,
 }: AddProviderFormProps) {
-  const formDefaults = getProviderFormDefaults(initialData);
+  const { scope } = useCareScope();
+  const resolvedInitialData = useMemo(
+    () => initialData ?? getScopedProviderInitialData(scope),
+    [initialData, scope],
+  );
+  const formDefaults = getProviderFormDefaults(resolvedInitialData);
   const { token } = useAuth();
+  const {
+    careMembers,
+    error: careMembersError,
+    isLoading: careMembersLoading,
+  } = useCareMembers();
   const createProviderMutation = useCreateProvider();
   const { showToast } = useToast();
   const [showStatePicker, setShowStatePicker] = useState(false);
@@ -120,6 +142,7 @@ export default function AddProviderForm({
     mode: "onChange",
   });
   const providerType = watch("type");
+  const isForAccountOwner = watch("isForAccountOwner");
   const scheduleAnswer = watch("scheduleAnswer");
   const nextAppointmentStatus = watch("nextAppointmentStatus");
   const reminderLeadDays = watch("reminderLeadDays");
@@ -136,13 +159,13 @@ export default function AddProviderForm({
   useFocusEffect(
     useCallback(() => {
       return () => {
-        const resetValues = getProviderFormDefaults(initialData);
+        const resetValues = getProviderFormDefaults(resolvedInitialData);
 
         reset(resetValues);
         setDraftState(resetValues.state);
         setShowStatePicker(false);
       };
-    }, [initialData, reset]),
+    }, [reset, resolvedInitialData]),
   );
 
   async function onSubmitPress(formData: ProviderFormData) {
@@ -165,7 +188,7 @@ export default function AddProviderForm({
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast("Provider added successfully", "success");
-      reset(initialProviderFormData);
+      reset(getScopedProviderInitialData(scope));
       setDraftState("");
       onCreateSuccess?.();
     } catch (error) {
@@ -186,6 +209,38 @@ export default function AddProviderForm({
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
+      <Controller
+        control={control}
+        name="careMemberIds"
+        rules={{
+          validate: (ids) =>
+            isForAccountOwner || ids.length > 0 || "Choose at least one person.",
+        }}
+        render={({ field: membersField, fieldState }) => (
+          <CarePersonSelector
+            careMembers={careMembers}
+            errorMessage={
+              fieldState.error?.message || careMembersError || undefined
+            }
+            isLoading={careMembersLoading}
+            multiple
+            onChange={({
+              isForAccountOwner: nextIsForAccountOwner,
+              careMemberIds: nextCareMemberIds,
+            }) => {
+              setValue("isForAccountOwner", nextIsForAccountOwner, {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
+              membersField.onChange(nextCareMemberIds);
+              membersField.onBlur();
+            }}
+            selectedCareMemberIds={membersField.value}
+            selectedForAccountOwner={isForAccountOwner}
+          />
+        )}
+      />
+
       <Controller
         control={control}
         name="type"
@@ -466,6 +521,22 @@ export default function AddProviderForm({
       ) : null}
     </ScrollView>
   );
+}
+
+// Defaults new providers to the active person while Everyone starts with the owner.
+function getScopedProviderInitialData(scope: CareScope): ProviderFormData {
+  if (scope.type === "member") {
+    return {
+      ...initialProviderFormData,
+      isForAccountOwner: false,
+      careMemberIds: [scope.careMemberId],
+    };
+  }
+
+  return {
+    ...initialProviderFormData,
+    careMemberIds: [],
+  };
 }
 
 type ControlledFloatingInputProps<TName extends ProviderTextFieldName> = {

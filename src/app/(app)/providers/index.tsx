@@ -1,6 +1,8 @@
 import { HapticButton } from "@/components/common/HapticButton";
+import { CareScopeSelector } from "@/components/family/care-scope-selector";
 import { ProviderWidget } from "@/components/providers/provider-widget";
 import { useProviders } from "@/hooks/useProviders";
+import { useCareScope } from "@/store/care-scope/CareScopeContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { ProviderType } from "@/types/provider";
@@ -21,6 +23,7 @@ const providerFilters: { label: string; value: ProviderType }[] = [
 
 export default function ProvidersScreen() {
   const { filter } = useLocalSearchParams<{ filter?: string }>();
+  const { matchesProvider } = useCareScope();
   const { error, isLoading, providers } = useProviders();
   const [activeFilter, setActiveFilter] = useState<ProviderType>("provider");
 
@@ -35,7 +38,8 @@ export default function ProvidersScreen() {
   );
 
   const filteredProviders = providers.filter(
-    (provider) => provider.type === activeFilter,
+    (provider) =>
+      provider.type === activeFilter && matchesProvider(provider),
   );
 
   return (
@@ -48,6 +52,8 @@ export default function ProvidersScreen() {
             View and manage your care team!
           </Text>
         </View>
+
+        <CareScopeSelector />
 
         <View style={styles.filterRow}>
           {providerFilters.map((filter) => {

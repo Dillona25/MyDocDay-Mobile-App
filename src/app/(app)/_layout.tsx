@@ -138,6 +138,12 @@ export default function AppLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="family"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

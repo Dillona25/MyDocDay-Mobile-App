@@ -1,8 +1,14 @@
 import { PickerModal } from "@/components/common/PickerModal";
+import { CarePersonSelector } from "@/components/family/care-person-selector";
 import { appointmentTypes } from "@/data/appointmentTypes";
 import { useCreateAppointment } from "@/hooks/useCreateAppointment";
+import { useCareMembers } from "@/hooks/useCareMembers";
 import { useProviders } from "@/hooks/useProviders";
 import { useAuth } from "@/store/auth/AuthContext";
+import {
+  useCareScope,
+  type CareScope,
+} from "@/store/care-scope/CareScopeContext";
 import { useToast } from "@/store/ToastContext";
 import { buttonDisabled } from "@/theme/buttons";
 import { colors } from "@/theme/colors";
@@ -91,8 +97,13 @@ function formatTimeForDisplay(date: Date) {
   });
 }
 
-function createInitialAppointmentFormData(date: Date): AppointmentFormData {
+function createInitialAppointmentFormData(
+  date: Date,
+  scope: CareScope,
+): AppointmentFormData {
   return {
+    careMemberId:
+      scope.type === "member" ? String(scope.careMemberId) : "self",
     title: "",
     date: formatDateForApi(date),
     startTime: formatTimeForApi(date),
@@ -138,11 +149,17 @@ export default function AddAppointmentForm({
   onCreateSuccess,
   onEditSubmit,
 }: AddAppointmentFormProps) {
+  const { scope } = useCareScope();
   const [defaultInitialData] = useState(() =>
-    createInitialAppointmentFormData(new Date()),
+    createInitialAppointmentFormData(new Date(), scope),
   );
   const resolvedInitialData = initialData ?? defaultInitialData;
   const { error, isLoading, providers } = useProviders();
+  const {
+    careMembers,
+    error: careMembersError,
+    isLoading: careMembersLoading,
+  } = useCareMembers();
   const { token } = useAuth();
   const createAppointmentMutation = useCreateAppointment();
   const { showToast } = useToast();
@@ -166,11 +183,19 @@ export default function AddAppointmentForm({
     mode: "onChange",
   });
   const selectedProviderMode = watch("providerSelection");
+  const selectedCareMemberId = watch("careMemberId");
   const selectedProviderId = watch("providerId");
   const selectedAppointmentType = watch("appointmentType");
   const selectedAppointmentDate = watch("date");
   const providerVisitWindowDate = watch("providerVisitWindowDate");
-  const selectedProvider = providers.find(
+  const availableProviders = providers.filter((provider) =>
+    selectedCareMemberId === "self"
+      ? provider.isForAccountOwner
+      : provider.careMembers.some(
+          (member) => String(member.id) === selectedCareMemberId,
+        ),
+  );
+  const selectedProvider = availableProviders.find(
     (provider) => String(provider.id) === selectedProviderId,
   );
   const savedProviderAddress = selectedProvider
@@ -182,6 +207,7 @@ export default function AddAppointmentForm({
     resolvedInitialData.providerId === selectedProviderId
       ? resolvedInitialData.providerVisitWindowDate
       : null,
+    selectedCareMemberId,
   );
 
   useEffect(() => {
@@ -228,10 +254,10 @@ export default function AddAppointmentForm({
         reset(
           mode === "edit"
             ? resolvedInitialData
-            : createInitialAppointmentFormData(nextDate),
+            : createInitialAppointmentFormData(nextDate, scope),
         );
       };
-    }, [mode, reset, resolvedInitialData]),
+    }, [mode, reset, resolvedInitialData, scope]),
   );
 
   function updateSelectedDate(date: Date) {
@@ -304,6 +330,10 @@ export default function AddAppointmentForm({
     try {
       await createAppointmentMutation.mutateAsync([
         {
+          careMemberId:
+            normalizedFormData.careMemberId === "self"
+              ? undefined
+              : Number(normalizedFormData.careMemberId),
           title: normalizedFormData.title,
           date: normalizedFormData.date,
           startTime: normalizedFormData.startTime,
@@ -334,7 +364,7 @@ export default function AddAppointmentForm({
       setSelectedDate(nextDate);
       setSelectedTime(nextDate);
       setActivePicker(null);
-      reset(createInitialAppointmentFormData(nextDate));
+      reset(createInitialAppointmentFormData(nextDate, scope));
       onCreateSuccess?.();
     } catch (requestError) {
       console.log(requestError);
@@ -351,6 +381,43 @@ export default function AddAppointmentForm({
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
+      <Controller
+        control={control}
+        name="careMemberId"
+        rules={{ required: "Choose who this appointment is for." }}
+        render={({ field: personField, fieldState }) => (
+          <CarePersonSelector
+            careMembers={careMembers}
+            errorMessage={
+              fieldState.error?.message || careMembersError || undefined
+            }
+            isLoading={careMembersLoading}
+            onChange={({ isForAccountOwner, careMemberIds }) => {
+              personField.onChange(
+                isForAccountOwner ? "self" : String(careMemberIds[0]),
+              );
+              personField.onBlur();
+              setValue("providerId", "", {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
+              setValue("providerVisitWindowResponse", "", {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
+              setValue("providerVisitWindowDate", null, {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
+            }}
+            selectedCareMemberIds={
+              personField.value === "self" ? [] : [Number(personField.value)]
+            }
+            selectedForAccountOwner={personField.value === "self"}
+          />
+        )}
+      />
+
       <ControlledFloatingInput
         control={control}
         labelText="Appointment Title"
@@ -550,7 +617,7 @@ export default function AddAppointmentForm({
             }}
             render={({ field: providerField, fieldState }) => (
               <>
-                {providers.map((provider) => {
+                {availableProviders.map((provider) => {
                   const providerId = String(provider.id);
                   const isActive = selectedProviderId === providerId;
                   const displayName =
@@ -1005,6 +1072,7 @@ function normalizeAppointmentFormData(
   const usesSavedProvider = formData.providerSelection === "saved";
 
   return {
+    careMemberId: formData.careMemberId,
     title: formData.title.trim(),
     date: formData.date.slice(0, 10),
     startTime: formData.startTime.slice(0, 5),
@@ -1025,14 +1093,18 @@ function getAdjacentVisitWindowDate(
   provider: Provider | undefined,
   appointmentDate: string,
   existingWindowDate: string | null | undefined,
+  careMemberId: string,
 ): string | null {
   if (appointmentDate.slice(0, 10) < formatDateForApi(new Date())) return null;
 
-  const ownerSchedule = provider?.visitSchedules.find(
-    (schedule) => schedule.careMemberId === null && schedule.isEnabled,
+  const selectedSchedule = provider?.visitSchedules.find(
+    (schedule) =>
+      schedule.careMemberId ===
+        (careMemberId === "self" ? null : Number(careMemberId)) &&
+      schedule.isEnabled,
   );
 
-  if (!ownerSchedule) return null;
+  if (!selectedSchedule) return null;
 
   if (
     existingWindowDate &&
@@ -1042,14 +1114,14 @@ function getAdjacentVisitWindowDate(
   }
 
   if (
-    ownerSchedule.nextVisitDueDate &&
-    areAdjacentCalendarMonths(appointmentDate, ownerSchedule.nextVisitDueDate)
+    selectedSchedule.nextVisitDueDate &&
+    areAdjacentCalendarMonths(appointmentDate, selectedSchedule.nextVisitDueDate)
   ) {
-    return ownerSchedule.nextVisitDueDate;
+    return selectedSchedule.nextVisitDueDate;
   }
 
   const [appointmentYear] = appointmentDate.slice(0, 7).split("-").map(Number);
-  const adjacentWindows = ownerSchedule.annualMonths.flatMap((month) =>
+  const adjacentWindows = selectedSchedule.annualMonths.flatMap((month) =>
     [appointmentYear - 1, appointmentYear, appointmentYear + 1]
       .map((year) => `${year}-${String(month).padStart(2, "0")}-15`)
       .filter((date) => areAdjacentCalendarMonths(appointmentDate, date)),

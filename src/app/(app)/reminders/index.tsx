@@ -1,4 +1,5 @@
 import { CareTaskCard } from "@/components/reminders/care-task-card";
+import { CareScopeSelector } from "@/components/family/care-scope-selector";
 import {
   formatTaskTime,
   getDaysUntilDue,
@@ -8,6 +9,7 @@ import {
 import { useCareTasks } from "@/hooks/useCareTasks";
 import { useUpdateCareTask } from "@/hooks/useUpdateCareTask";
 import { useAuth } from "@/store/auth/AuthContext";
+import { useCareScope } from "@/store/care-scope/CareScopeContext";
 import { useToast } from "@/store/ToastContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
@@ -24,12 +26,16 @@ import {
 } from "react-native";
 
 export default function RemindersScreen() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { showToast } = useToast();
+  const { matchesCareMember } = useCareScope();
   const { error, isLoading, tasks } = useCareTasks();
   const updateTaskMutation = useUpdateCareTask();
   const openTasks = tasks
-    .filter((task) => task.status === "pending")
+    .filter(
+      (task) =>
+        task.status === "pending" && matchesCareMember(task.careMemberId),
+    )
     .sort((first, second) =>
       getTaskSortValue(first).localeCompare(getTaskSortValue(second)),
     );
@@ -97,6 +103,8 @@ export default function RemindersScreen() {
           </Text>
         </View>
 
+        <CareScopeSelector />
+
         <View style={styles.taskSection}>
           <View style={styles.taskList}>
             {isLoading ? (
@@ -136,6 +144,11 @@ export default function RemindersScreen() {
 
                           return (
                             <CareTaskCard
+                              careMemberName={
+                                task.careMember?.firstName ||
+                                user?.firstName ||
+                                "Account owner"
+                              }
                               dueDate={task.dueDate}
                               dueLabel={due.label}
                               dueTone={due.tone}

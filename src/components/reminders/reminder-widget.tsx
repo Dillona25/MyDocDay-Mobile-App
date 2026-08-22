@@ -8,6 +8,7 @@ import {
 import { useCareTasks } from "@/hooks/useCareTasks";
 import { useUpdateCareTask } from "@/hooks/useUpdateCareTask";
 import { useAuth } from "@/store/auth/AuthContext";
+import { useCareScope } from "@/store/care-scope/CareScopeContext";
 import { useToast } from "@/store/ToastContext";
 import { borderPrimary } from "@/theme/borders";
 import { colors } from "@/theme/colors";
@@ -20,12 +21,16 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 const maximumVisibleReminders = 3;
 
 export function ReminderWidget() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { showToast } = useToast();
+  const { matchesCareMember } = useCareScope();
   const { error, isLoading, tasks } = useCareTasks();
   const updateTaskMutation = useUpdateCareTask();
   const activeReminders = tasks
-    .filter((task) => task.status === "pending")
+    .filter(
+      (task) =>
+        task.status === "pending" && matchesCareMember(task.careMemberId),
+    )
     .sort((first, second) =>
       getTaskSortValue(first).localeCompare(getTaskSortValue(second)),
     );
@@ -101,7 +106,12 @@ export function ReminderWidget() {
         <View style={styles.reminderList}>
           {visibleReminders.map((task) => {
             const due = getDuePresentation(task.dueDate);
+            const assigneeName =
+              task.careMember?.firstName ||
+              user?.firstName ||
+              "Account owner";
             const metadata = [
+              `For ${assigneeName}`,
               formatTaskTime(task.dueTime),
               task.providerName ?? undefined,
             ]

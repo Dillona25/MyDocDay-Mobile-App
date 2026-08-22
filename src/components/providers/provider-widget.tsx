@@ -1,6 +1,8 @@
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { Provider } from "@/types/provider";
+import { useCareMembers } from "@/hooks/useCareMembers";
+import { useAuth } from "@/store/auth/AuthContext";
 import { Image } from "expo-image";
 import { router, type Href } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -19,6 +21,8 @@ export function ProviderWidget({
   returnTo,
   variant = "compact",
 }: ProviderWidgetProps) {
+  const { careMembers } = useCareMembers();
+  const { user } = useAuth();
   const displayName =
     provider.type === "clinic"
       ? (provider.clinicName ?? "Clinic")
@@ -28,6 +32,25 @@ export function ProviderWidget({
       ? displayName.charAt(0).toUpperCase()
       : `${provider.firstName?.charAt(0) ?? ""}${provider.lastName?.charAt(0) ?? ""}`.toUpperCase();
   const widgetLabel = provider.type === "clinic" ? "Clinic" : "Provider";
+  const isAssignedToEveryone =
+    provider.isForAccountOwner &&
+    careMembers.length > 0 &&
+    careMembers.every((member) =>
+      provider.careMembers.some(
+        (assignedMember) => assignedMember.id === member.id,
+      ),
+    );
+  const assignedPeople = [
+    provider.isForAccountOwner
+      ? user?.firstName || "Account owner"
+      : null,
+    ...provider.careMembers.map((member) => member.firstName),
+  ].filter((name): name is string => Boolean(name));
+  const familyAssigneeLabel = isAssignedToEveryone
+    ? "Everyone"
+    : assignedPeople.length > 1
+      ? `${assignedPeople[0]} +${assignedPeople.length - 1}`
+      : assignedPeople[0] ?? null;
   const location = [provider.city, provider.state].filter(Boolean).join(", ");
   const hasDetails = Boolean(
     location || provider.zipCode || provider.phoneNumber,
@@ -89,22 +112,43 @@ export function ProviderWidget({
 
         <View style={styles.headingContent}>
           <View style={styles.labelRow}>
-            <Text style={styles.widgetLabel}>{widgetLabel}</Text>
-            <View style={styles.labelActions}>
+            <View style={styles.labelIdentity}>
+              <Text style={styles.widgetLabel}>{widgetLabel}</Text>
               {activeVisitSchedule ? (
-                <View
-                  accessibilityLabel={`Routine visit schedule active: ${formatRoutineMonths(activeVisitSchedule.annualMonths)}`}
-                  accessible
-                  style={styles.scheduleIndicator}
-                >
-                  <View style={styles.scheduleDot} />
-                  <Text
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.8}
-                    numberOfLines={1}
-                    style={styles.scheduleText}
+                <>
+                  <Text style={styles.labelSeparator}>|</Text>
+                  <View
+                    accessibilityLabel={`Routine visit schedule active: ${formatRoutineMonths(activeVisitSchedule.annualMonths)}`}
+                    accessible
+                    style={styles.scheduleIndicator}
                   >
-                    Routine Visits Enabled
+                    <Text
+                      adjustsFontSizeToFit
+                      ellipsizeMode="tail"
+                      minimumFontScale={0.8}
+                      numberOfLines={1}
+                      style={styles.scheduleText}
+                    >
+                      Routine Visits Enabled
+                    </Text>
+                  </View>
+                </>
+              ) : null}
+            </View>
+            <View style={styles.labelActions}>
+              {familyAssigneeLabel ? (
+                <View
+                  accessibilityLabel={`For ${familyAssigneeLabel}`}
+                  accessible
+                  style={styles.assignee}
+                >
+                  <Image
+                    contentFit="contain"
+                    source={require("../../assets/people-roof-solid-full.svg")}
+                    style={styles.assigneeIcon}
+                  />
+                  <Text numberOfLines={1} style={styles.assigneeText}>
+                    For {familyAssigneeLabel}
                   </Text>
                 </View>
               ) : null}
@@ -132,6 +176,7 @@ export function ProviderWidget({
             {displayName}
           </Text>
           <Text
+            numberOfLines={1}
             style={[
               styles.specialty,
               variant === "full" ? styles.fullSpecialty : null,
@@ -276,12 +321,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
   },
+  labelIdentity: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: 6,
+    minWidth: 0,
+  },
+  labelSeparator: {
+    color: "#9aa6b5",
+    fontFamily: fonts.body,
+    fontSize: 10,
+    fontWeight: fontWeights.semibold,
+  },
   labelActions: {
     alignItems: "center",
     flexDirection: "row",
-    flexShrink: 1,
+    flexShrink: 0,
     gap: 10,
     marginLeft: 8,
+    maxWidth: "38%",
     minWidth: 0,
   },
   widgetLabel: {
@@ -290,6 +349,29 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: fontWeights.semibold,
     textTransform: "uppercase",
+  },
+  assignee: {
+    alignItems: "center",
+    backgroundColor: "rgba(28, 184, 178, 0.1)",
+    borderRadius: 5,
+    flexDirection: "row",
+    flexShrink: 1,
+    gap: 4,
+    maxWidth: 128,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  assigneeIcon: {
+    height: 10,
+    tintColor: "#39716f",
+    width: 11,
+  },
+  assigneeText: {
+    color: "#39716f",
+    flexShrink: 1,
+    fontFamily: fonts.body,
+    fontSize: 10,
+    fontWeight: fontWeights.bold,
   },
   deleteText: {
     color: "#94a3b8",
@@ -323,13 +405,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexShrink: 1,
     flexDirection: "row",
-    gap: 5,
-  },
-  scheduleDot: {
-    backgroundColor: colors.secondary,
-    borderRadius: 4,
-    height: 8,
-    width: 8,
+    minWidth: 0,
   },
   scheduleText: {
     color: "#39716f",
@@ -337,6 +413,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 10,
     fontWeight: fontWeights.bold,
+    minWidth: 0,
   },
   details: {
     borderTopColor: "#f1f5f9",
