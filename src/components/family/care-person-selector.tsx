@@ -1,4 +1,5 @@
 import { HapticButton } from "@/components/common/HapticButton";
+import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { CareMember } from "@/types/care-member";
@@ -26,6 +27,8 @@ export function CarePersonSelector({
   selectedCareMemberIds,
   selectedForAccountOwner,
 }: CarePersonSelectorProps) {
+  const { user } = useAuth();
+
   function selectOwner() {
     onChange({
       isForAccountOwner: multiple ? !selectedForAccountOwner : true,
@@ -53,7 +56,7 @@ export function CarePersonSelector({
       <View style={styles.options}>
         <PersonOption
           isSelected={selectedForAccountOwner}
-          label="Me"
+          label={user?.firstName || "Account owner"}
           onPress={selectOwner}
         />
         {careMembers.map((member) => (

@@ -1,6 +1,7 @@
 import { formatProviderLocation } from "@/api/providers/provider-location";
 import { useProviders } from "@/hooks/useProviders";
 import { useCareMembers } from "@/hooks/useCareMembers";
+import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { Appointment } from "@/types/appointment";
@@ -51,6 +52,7 @@ export function AppointmentCard({
 }: AppointmentCardProps) {
   const { providers } = useProviders();
   const { careMembers } = useCareMembers();
+  const { user } = useAuth();
   const linkedProvider = providers.find(
     (provider) => provider.id === appointment.providerId,
   );
@@ -62,7 +64,8 @@ export function AppointmentCard({
   const assignedCareMember =
     appointment.careMember ??
     careMembers.find((member) => member.id === appointment.careMemberId);
-  const careMemberName = assignedCareMember?.firstName;
+  const careMemberName =
+    assignedCareMember?.firstName || user?.firstName || "Account owner";
   const providerLabel =
     appointment.providerType === "clinic" ? "Clinic" : "Provider";
   const appointmentTypeIcon =
@@ -118,11 +121,7 @@ export function AppointmentCard({
             <Text ellipsizeMode="tail" numberOfLines={1} style={styles.compactMeta}>
               {appointment.doctorName ?? providerLabel}
             </Text>
-            {careMemberName ? (
-              <FamilyAssignee includeFor name={careMemberName} />
-            ) : (
-              <Text style={styles.compactOwner}>For Me</Text>
-            )}
+            <FamilyAssignee name={careMemberName} />
           </View>
         </View>
 
@@ -143,7 +142,7 @@ export function AppointmentCard({
       <View style={styles.header}>
         <Text numberOfLines={1} style={styles.widgetLabel}>Appointment</Text>
         <View style={styles.headerActions}>
-          {careMemberName ? <FamilyAssignee name={careMemberName} /> : null}
+          <FamilyAssignee name={careMemberName} />
           {onDelete ? (
             <Pressable
               accessibilityLabel={`Delete ${appointment.title}`}
@@ -208,13 +207,7 @@ export function AppointmentCard({
   );
 }
 
-function FamilyAssignee({
-  includeFor = false,
-  name,
-}: {
-  includeFor?: boolean;
-  name: string;
-}) {
+function FamilyAssignee({ name }: { name: string }) {
   return (
     <View accessibilityLabel={`For ${name}`} accessible style={styles.assignee}>
       <Image
@@ -223,7 +216,7 @@ function FamilyAssignee({
         style={styles.assigneeIcon}
       />
       <Text numberOfLines={1} style={styles.assigneeText}>
-        {includeFor ? `For ${name}` : name}
+        For {name}
       </Text>
     </View>
   );
@@ -308,13 +301,6 @@ const styles = StyleSheet.create({
     gap: 7,
     marginTop: 3,
     minWidth: 0,
-  },
-  compactOwner: {
-    color: "#536173",
-    flexShrink: 0,
-    fontFamily: fonts.body,
-    fontSize: 11,
-    fontWeight: fontWeights.semibold,
   },
   header: {
     alignItems: "center",

@@ -2,6 +2,7 @@ import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { Provider } from "@/types/provider";
 import { useCareMembers } from "@/hooks/useCareMembers";
+import { useAuth } from "@/store/auth/AuthContext";
 import { Image } from "expo-image";
 import { router, type Href } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -21,6 +22,7 @@ export function ProviderWidget({
   variant = "compact",
 }: ProviderWidgetProps) {
   const { careMembers } = useCareMembers();
+  const { user } = useAuth();
   const displayName =
     provider.type === "clinic"
       ? (provider.clinicName ?? "Clinic")
@@ -38,13 +40,17 @@ export function ProviderWidget({
         (assignedMember) => assignedMember.id === member.id,
       ),
     );
-  const assignedPeopleCount =
-    provider.careMembers.length + (provider.isForAccountOwner ? 1 : 0);
+  const assignedPeople = [
+    provider.isForAccountOwner
+      ? user?.firstName || "Account owner"
+      : null,
+    ...provider.careMembers.map((member) => member.firstName),
+  ].filter((name): name is string => Boolean(name));
   const familyAssigneeLabel = isAssignedToEveryone
     ? "Everyone"
-    : assignedPeopleCount > 1
-      ? `${assignedPeopleCount} people`
-      : provider.careMembers[0]?.firstName ?? null;
+    : assignedPeople.length > 1
+      ? `${assignedPeople[0]} +${assignedPeople.length - 1}`
+      : assignedPeople[0] ?? null;
   const location = [provider.city, provider.state].filter(Boolean).join(", ");
   const hasDetails = Boolean(
     location || provider.zipCode || provider.phoneNumber,
@@ -142,7 +148,7 @@ export function ProviderWidget({
                     style={styles.assigneeIcon}
                   />
                   <Text numberOfLines={1} style={styles.assigneeText}>
-                    {familyAssigneeLabel}
+                    For {familyAssigneeLabel}
                   </Text>
                 </View>
               ) : null}
@@ -351,7 +357,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexShrink: 1,
     gap: 4,
-    maxWidth: 112,
+    maxWidth: 128,
     paddingHorizontal: 6,
     paddingVertical: 3,
   },

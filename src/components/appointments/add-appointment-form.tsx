@@ -5,6 +5,10 @@ import { useCreateAppointment } from "@/hooks/useCreateAppointment";
 import { useCareMembers } from "@/hooks/useCareMembers";
 import { useProviders } from "@/hooks/useProviders";
 import { useAuth } from "@/store/auth/AuthContext";
+import {
+  useCareScope,
+  type CareScope,
+} from "@/store/care-scope/CareScopeContext";
 import { useToast } from "@/store/ToastContext";
 import { buttonDisabled } from "@/theme/buttons";
 import { colors } from "@/theme/colors";
@@ -93,9 +97,13 @@ function formatTimeForDisplay(date: Date) {
   });
 }
 
-function createInitialAppointmentFormData(date: Date): AppointmentFormData {
+function createInitialAppointmentFormData(
+  date: Date,
+  scope: CareScope,
+): AppointmentFormData {
   return {
-    careMemberId: "self",
+    careMemberId:
+      scope.type === "member" ? String(scope.careMemberId) : "self",
     title: "",
     date: formatDateForApi(date),
     startTime: formatTimeForApi(date),
@@ -141,8 +149,9 @@ export default function AddAppointmentForm({
   onCreateSuccess,
   onEditSubmit,
 }: AddAppointmentFormProps) {
+  const { scope } = useCareScope();
   const [defaultInitialData] = useState(() =>
-    createInitialAppointmentFormData(new Date()),
+    createInitialAppointmentFormData(new Date(), scope),
   );
   const resolvedInitialData = initialData ?? defaultInitialData;
   const { error, isLoading, providers } = useProviders();
@@ -245,10 +254,10 @@ export default function AddAppointmentForm({
         reset(
           mode === "edit"
             ? resolvedInitialData
-            : createInitialAppointmentFormData(nextDate),
+            : createInitialAppointmentFormData(nextDate, scope),
         );
       };
-    }, [mode, reset, resolvedInitialData]),
+    }, [mode, reset, resolvedInitialData, scope]),
   );
 
   function updateSelectedDate(date: Date) {
@@ -355,7 +364,7 @@ export default function AddAppointmentForm({
       setSelectedDate(nextDate);
       setSelectedTime(nextDate);
       setActivePicker(null);
-      reset(createInitialAppointmentFormData(nextDate));
+      reset(createInitialAppointmentFormData(nextDate, scope));
       onCreateSuccess?.();
     } catch (requestError) {
       console.log(requestError);

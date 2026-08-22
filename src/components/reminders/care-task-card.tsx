@@ -95,7 +95,7 @@ export function CareTaskCard({
                   style={styles.assigneeIcon}
                 />
                 <Text ellipsizeMode="tail" numberOfLines={1} style={styles.assigneeText}>
-                  {careMemberName}
+                  For {careMemberName}
                 </Text>
               </View>
             ) : null}

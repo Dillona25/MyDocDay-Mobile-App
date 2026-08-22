@@ -3,6 +3,7 @@ import { BackButton } from "@/components/common/BackButton";
 import { HapticButton } from "@/components/common/HapticButton";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useProviders } from "@/hooks/useProviders";
+import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { Appointment } from "@/types/appointment";
@@ -42,6 +43,7 @@ function getAppointmentDateTime(appointment: Appointment) {
 }
 
 export default function ProviderDetailsScreen() {
+  const { user } = useAuth();
   const { providerId, returnTo } = useLocalSearchParams<{
     providerId: string;
     returnTo?: string;
@@ -193,7 +195,9 @@ export default function ProviderDetailsScreen() {
   const upcomingCount = upcomingAppointments.length;
   const pastCount = pastAppointments.length;
   const providerAssignees = [
-    provider.isForAccountOwner ? "Me" : null,
+    provider.isForAccountOwner
+      ? user?.firstName || "Account owner"
+      : null,
     ...provider.careMembers.map((member) => member.firstName),
   ]
     .filter(Boolean)
@@ -441,13 +445,14 @@ function VisitScheduleSummary({
 }: {
   schedule: ProviderVisitSchedule;
 }) {
+  const { user } = useAuth();
   const monthSummary = formatMonthList(schedule.annualMonths);
   const appointmentStatus = getAppointmentStatusLabel(
     schedule.nextAppointmentStatus,
   );
   const scheduleOwner = schedule.careMember
     ? schedule.careMember.firstName
-    : "You";
+    : user?.firstName || "Account owner";
 
   return (
     <View style={styles.scheduleSummary}>

@@ -7,6 +7,10 @@ import { useCreateCareTask } from "@/hooks/useCreateCareTask";
 import { useProviders } from "@/hooks/useProviders";
 import { useUpdateCareTask } from "@/hooks/useUpdateCareTask";
 import { useAuth } from "@/store/auth/AuthContext";
+import {
+  useCareScope,
+  type CareScope,
+} from "@/store/care-scope/CareScopeContext";
 import { useToast } from "@/store/ToastContext";
 import { buttonDisabled } from "@/theme/buttons";
 import { colors } from "@/theme/colors";
@@ -79,9 +83,10 @@ function formatTimeForDisplay(date: Date) {
   });
 }
 
-function createInitialFormData(date: Date): CareTaskFormData {
+function createInitialFormData(date: Date, scope: CareScope): CareTaskFormData {
   return {
-    careMemberId: "self",
+    careMemberId:
+      scope.type === "member" ? String(scope.careMemberId) : "self",
     title: "",
     notes: "",
     dueDate: formatDateForApi(date),
@@ -134,8 +139,9 @@ export default function AddCareTaskForm({
   onCreateSuccess?: () => void;
   task?: CareTask;
 }) {
+  const { scope } = useCareScope();
   const [initialFormData] = useState(() =>
-    task ? createEditFormData(task) : createInitialFormData(new Date()),
+    task ? createEditFormData(task) : createInitialFormData(new Date(), scope),
   );
   const [initialDate] = useState(() => parseDate(initialFormData.dueDate));
   const [initialTime] = useState(() =>
@@ -187,9 +193,11 @@ export default function AddCareTaskForm({
         setActivePicker(null);
         setShowProviderPicker(false);
         setDraftProviderId("");
-        reset(task ? initialFormData : createInitialFormData(nextDate));
+        reset(
+          task ? initialFormData : createInitialFormData(nextDate, scope),
+        );
       };
-    }, [initialDate, initialFormData, initialTime, reset, task]),
+    }, [initialDate, initialFormData, initialTime, reset, scope, task]),
   );
 
   function updateDate(date: Date) {

@@ -40,10 +40,11 @@ export function RemoveFamilyMemberModal({
           </View>
           <Text style={styles.title}>Remove {displayName}?</Text>
           <Text style={styles.description}>
-            This permanently removes their medications, appointments, and
-            Health Actions. Providers or clinics used only by {displayName}
-            will also be removed. Shared providers stay available to everyone
-            else. This cannot be undone.
+            This permanently removes {displayName}&apos;s medications,
+            appointments, and Health Actions. Providers and clinics assigned
+            only to {displayName} will also be removed. For shared providers,
+            only {displayName}&apos;s assignment is removed. This cannot be
+            undone.
           </Text>
           <View style={styles.actionRow}>
             <HapticButton

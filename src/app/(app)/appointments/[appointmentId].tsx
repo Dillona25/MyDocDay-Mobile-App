@@ -7,6 +7,7 @@ import { useAppointments } from "@/hooks/useAppointments";
 import { useCareMembers } from "@/hooks/useCareMembers";
 import { useProviders } from "@/hooks/useProviders";
 import { useToast } from "@/store/ToastContext";
+import { useAuth } from "@/store/auth/AuthContext";
 import { colors } from "@/theme/colors";
 import { fonts, fontWeights } from "@/theme/fonts";
 import type { Appointment } from "@/types/appointment";
@@ -76,6 +77,7 @@ export default function AppointmentDetailsScreen() {
   const { appointments, aptError, isLoadingApt } = useAppointments();
   const { careMembers } = useCareMembers();
   const { providers } = useProviders();
+  const { user } = useAuth();
   const { showToast } = useToast();
   const [isOpeningCalendar, setIsOpeningCalendar] = useState(false);
   const appointment = appointments.find(
@@ -84,6 +86,8 @@ export default function AppointmentDetailsScreen() {
   const assignedCareMember =
     appointment?.careMember ??
     careMembers.find((member) => member.id === appointment?.careMemberId);
+  const assigneeName =
+    assignedCareMember?.firstName || user?.firstName || "Account owner";
   const linkedProvider = providers.find(
     (provider) => provider.id === appointment?.providerId,
   );
@@ -189,18 +193,14 @@ export default function AppointmentDetailsScreen() {
           </Text>
           <Text style={styles.title}>{appointment.title}</Text>
           <Text style={styles.type}>{appointmentTypeLabel}</Text>
-          {assignedCareMember ? (
-            <View style={styles.assigneeChip}>
-              <Image
-                contentFit="contain"
-                source={require("../../../assets/people-roof-solid-full.svg")}
-                style={styles.assigneeIcon}
-              />
-              <Text style={styles.assigneeText}>
-                For {assignedCareMember.firstName}
-              </Text>
-            </View>
-          ) : null}
+          <View style={styles.assigneeChip}>
+            <Image
+              contentFit="contain"
+              source={require("../../../assets/people-roof-solid-full.svg")}
+              style={styles.assigneeIcon}
+            />
+            <Text style={styles.assigneeText}>For {assigneeName}</Text>
+          </View>
         </View>
 
         <View style={styles.actionRow}>
@@ -247,10 +247,7 @@ export default function AppointmentDetailsScreen() {
           <Text style={styles.sectionTitle}>Appointment information</Text>
 
           <View style={styles.detailList}>
-            <DetailRow
-              label="For"
-              value={assignedCareMember?.firstName ?? "Me"}
-            />
+            <DetailRow label="For" value={assigneeName} />
             <DetailRow
               label="Date"
               value={formatAppointmentDate(appointment.date)}

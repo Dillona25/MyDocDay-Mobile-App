@@ -6,6 +6,10 @@ import { usStates } from "@/data/usStates";
 import { useCreateProvider } from "@/hooks/useCreateProvider";
 import { useCareMembers } from "@/hooks/useCareMembers";
 import { useAuth } from "@/store/auth/AuthContext";
+import {
+  useCareScope,
+  type CareScope,
+} from "@/store/care-scope/CareScopeContext";
 import { useToast } from "@/store/ToastContext";
 import { buttonDisabled } from "@/theme/buttons";
 import { colors } from "@/theme/colors";
@@ -28,7 +32,13 @@ import type { CreateProviderInput } from "@/types/provider";
 import { Picker } from "@react-native-picker/picker";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect } from "expo-router";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   Controller,
   type Control,
@@ -98,12 +108,17 @@ type AddProviderFormProps = {
 
 export default function AddProviderForm({
   footer,
-  initialData = initialProviderFormData,
+  initialData,
   mode = "create",
   onCreateSuccess,
   onEditSubmit,
 }: AddProviderFormProps) {
-  const formDefaults = getProviderFormDefaults(initialData);
+  const { scope } = useCareScope();
+  const resolvedInitialData = useMemo(
+    () => initialData ?? getScopedProviderInitialData(scope),
+    [initialData, scope],
+  );
+  const formDefaults = getProviderFormDefaults(resolvedInitialData);
   const { token } = useAuth();
   const {
     careMembers,
@@ -144,13 +159,13 @@ export default function AddProviderForm({
   useFocusEffect(
     useCallback(() => {
       return () => {
-        const resetValues = getProviderFormDefaults(initialData);
+        const resetValues = getProviderFormDefaults(resolvedInitialData);
 
         reset(resetValues);
         setDraftState(resetValues.state);
         setShowStatePicker(false);
       };
-    }, [initialData, reset]),
+    }, [reset, resolvedInitialData]),
   );
 
   async function onSubmitPress(formData: ProviderFormData) {
@@ -173,7 +188,7 @@ export default function AddProviderForm({
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast("Provider added successfully", "success");
-      reset(initialProviderFormData);
+      reset(getScopedProviderInitialData(scope));
       setDraftState("");
       onCreateSuccess?.();
     } catch (error) {
@@ -506,6 +521,22 @@ export default function AddProviderForm({
       ) : null}
     </ScrollView>
   );
+}
+
+// Defaults new providers to the active person while Everyone starts with the owner.
+function getScopedProviderInitialData(scope: CareScope): ProviderFormData {
+  if (scope.type === "member") {
+    return {
+      ...initialProviderFormData,
+      isForAccountOwner: false,
+      careMemberIds: [scope.careMemberId],
+    };
+  }
+
+  return {
+    ...initialProviderFormData,
+    careMemberIds: [],
+  };
 }
 
 type ControlledFloatingInputProps<TName extends ProviderTextFieldName> = {
