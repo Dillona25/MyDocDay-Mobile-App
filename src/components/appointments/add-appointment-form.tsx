@@ -54,6 +54,45 @@ const providerOptions = [
   { label: "Different Provider", value: otherDoctorValue },
 ] as const;
 
+const recurrenceStatusOptions = [
+  { label: "Yes", value: "recurring" },
+  { label: "No", value: "not_recurring" },
+  { label: "I'm not sure", value: "unsure" },
+] as const;
+
+const recurrencePatternOptions = [
+  {
+    label: "Every 3 months",
+    value: "three_months",
+    intervalValue: "3",
+    intervalUnit: "months",
+  },
+  {
+    label: "Every 6 months",
+    value: "six_months",
+    intervalValue: "6",
+    intervalUnit: "months",
+  },
+  {
+    label: "Once a year",
+    value: "one_year",
+    intervalValue: "1",
+    intervalUnit: "years",
+  },
+  {
+    label: "Custom interval",
+    value: "custom",
+    intervalValue: null,
+    intervalUnit: null,
+  },
+] as const;
+
+const recurrenceLeadOptions = [
+  { label: "2 weeks before", value: "14" },
+  { label: "1 month before", value: "30" },
+  { label: "2 months before", value: "60" },
+] as const;
+
 type ActivePicker = "date" | "time" | null;
 
 const minimumAppointmentDate = new Date(1900, 0, 1);
@@ -103,6 +142,11 @@ function createInitialAppointmentFormData(date: Date): AppointmentFormData {
     location: "",
     providerVisitWindowResponse: "",
     providerVisitWindowDate: null,
+    recurrenceStatus: "",
+    recurrencePattern: "",
+    recurrenceIntervalValue: "6",
+    recurrenceIntervalUnit: "months",
+    recurrenceReminderLeadDays: "30",
   };
 }
 
@@ -169,6 +213,8 @@ export default function AddAppointmentForm({
   const selectedProviderId = watch("providerId");
   const selectedAppointmentType = watch("appointmentType");
   const selectedAppointmentDate = watch("date");
+  const recurrenceStatus = watch("recurrenceStatus");
+  const recurrencePattern = watch("recurrencePattern");
   const providerVisitWindowDate = watch("providerVisitWindowDate");
   const selectedProvider = providers.find(
     (provider) => String(provider.id) === selectedProviderId,
@@ -187,6 +233,14 @@ export default function AddAppointmentForm({
   useEffect(() => {
     void trigger(["providerId", "doctorName"]);
   }, [selectedProviderMode, trigger]);
+
+  useEffect(() => {
+    void trigger([
+      "recurrencePattern",
+      "recurrenceIntervalValue",
+      "recurrenceReminderLeadDays",
+    ]);
+  }, [recurrencePattern, recurrenceStatus, trigger]);
 
   useEffect(() => {
     if (providerVisitWindowDate === adjacentVisitWindowDate) {
@@ -307,6 +361,7 @@ export default function AddAppointmentForm({
           title: normalizedFormData.title,
           date: normalizedFormData.date,
           startTime: normalizedFormData.startTime,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           appointmentType:
             normalizedFormData.appointmentType || "in_person",
           providerId:
@@ -323,6 +378,20 @@ export default function AddAppointmentForm({
             normalizedFormData.providerVisitWindowResponse === "covers"
               ? normalizedFormData.providerVisitWindowDate
               : null,
+          recurrenceStatus: normalizedFormData.recurrenceStatus || "unsure",
+          recurrence:
+            normalizedFormData.recurrenceStatus === "recurring"
+              ? {
+                  intervalValue: Number(
+                    normalizedFormData.recurrenceIntervalValue,
+                  ),
+                  intervalUnit:
+                    normalizedFormData.recurrenceIntervalUnit,
+                  reminderLeadDays: Number(
+                    normalizedFormData.recurrenceReminderLeadDays,
+                  ),
+                }
+              : undefined,
         },
         token,
       ]);
@@ -727,6 +796,244 @@ export default function AddAppointmentForm({
         </View>
       ) : null}
 
+      <View style={styles.recurrenceSection}>
+        <View style={styles.recurrenceHeader}>
+          <Text style={styles.recurrenceEyebrow}>Ongoing care</Text>
+          <Text style={styles.recurrenceDescription}>
+            Tell us whether this care repeats so MyDocDay can help you plan the
+            next one.
+          </Text>
+        </View>
+
+        <Controller
+          control={control}
+          name="recurrenceStatus"
+          rules={{ required: "Choose whether this care repeats." }}
+          render={({ field: recurrenceField, fieldState }) => (
+            <View style={styles.fieldGroup}>
+              <RequiredLabel>Will this type of care happen again?</RequiredLabel>
+              <View style={segmentedRow}>
+                {recurrenceStatusOptions.map((option) => {
+                  const isActive = recurrenceField.value === option.value;
+
+                  return (
+                    <HapticButton
+                      key={option.value}
+                      onPress={() => {
+                        recurrenceField.onChange(option.value);
+                        recurrenceField.onBlur();
+                        if (option.value !== "recurring") {
+                          setValue("recurrencePattern", "", {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                        }
+                      }}
+                      style={[optionButton, isActive ? optionButtonActive : null]}
+                    >
+                      <Text
+                        style={[
+                          optionButtonText,
+                          isActive ? optionButtonTextActive : null,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </HapticButton>
+                  );
+                })}
+              </View>
+              {fieldState.isTouched && fieldState.error ? (
+                <Text style={styles.errorText}>{fieldState.error.message}</Text>
+              ) : null}
+            </View>
+          )}
+        />
+
+        {recurrenceStatus === "recurring" ? (
+          <View style={styles.recurrenceFields}>
+            <Controller
+              control={control}
+              name="recurrencePattern"
+              rules={{
+                validate: (value) =>
+                  recurrenceStatus !== "recurring" ||
+                  Boolean(value) ||
+                  "Choose how often this care repeats.",
+              }}
+              render={({ field: patternField, fieldState }) => (
+                <View style={styles.fieldGroup}>
+                  <RequiredLabel>How often does it repeat?</RequiredLabel>
+                  <View style={styles.recurrencePatternGrid}>
+                    {recurrencePatternOptions.map((option) => {
+                      const isActive = patternField.value === option.value;
+
+                      return (
+                        <HapticButton
+                          key={option.value}
+                          onPress={() => {
+                            patternField.onChange(option.value);
+                            patternField.onBlur();
+                            if (option.intervalValue && option.intervalUnit) {
+                              setValue(
+                                "recurrenceIntervalValue",
+                                option.intervalValue,
+                                { shouldDirty: true, shouldValidate: true },
+                              );
+                              setValue(
+                                "recurrenceIntervalUnit",
+                                option.intervalUnit,
+                                { shouldDirty: true, shouldValidate: true },
+                              );
+                            }
+                          }}
+                          style={[
+                            styles.recurrencePatternButton,
+                            isActive ? styles.recurrencePatternButtonActive : null,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.recurrencePatternText,
+                              isActive ? styles.recurrencePatternTextActive : null,
+                            ]}
+                          >
+                            {option.label}
+                          </Text>
+                        </HapticButton>
+                      );
+                    })}
+                  </View>
+                  {fieldState.isTouched && fieldState.error ? (
+                    <Text style={styles.errorText}>{fieldState.error.message}</Text>
+                  ) : null}
+                </View>
+              )}
+            />
+
+            {recurrencePattern === "custom" ? (
+              <View style={styles.customIntervalGroup}>
+                <Controller
+                  control={control}
+                  name="recurrenceIntervalValue"
+                  rules={{
+                    validate: (value) => {
+                      if (recurrencePattern !== "custom") return true;
+                      const interval = Number(value);
+                      return (
+                        (Number.isInteger(interval) &&
+                          interval > 0 &&
+                          interval <= 32767) ||
+                        "Enter a whole number greater than zero."
+                      );
+                    },
+                  }}
+                  render={({ field: intervalField, fieldState }) => (
+                    <View style={styles.fieldGroup}>
+                      <View style={fieldStack}>
+                        <Text style={label}>
+                          Repeat every <Text style={styles.requiredIndicator}>*</Text>
+                        </Text>
+                        <TextInput
+                          keyboardType="number-pad"
+                          onBlur={intervalField.onBlur}
+                          onChangeText={intervalField.onChange}
+                          style={[
+                            textInput,
+                            fieldState.error ? styles.inputError : null,
+                          ]}
+                          value={intervalField.value}
+                        />
+                      </View>
+                      {fieldState.isTouched && fieldState.error ? (
+                        <Text style={styles.errorText}>
+                          {fieldState.error.message}
+                        </Text>
+                      ) : null}
+                    </View>
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name="recurrenceIntervalUnit"
+                  render={({ field: unitField }) => (
+                    <View style={styles.fieldGroup}>
+                      <RequiredLabel>Time period</RequiredLabel>
+                      <View style={segmentedRow}>
+                        {(["weeks", "months", "years"] as const).map((unit) => {
+                          const isActive = unitField.value === unit;
+                          return (
+                            <HapticButton
+                              key={unit}
+                              onPress={() => unitField.onChange(unit)}
+                              style={[
+                                optionButton,
+                                isActive ? optionButtonActive : null,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  optionButtonText,
+                                  isActive ? optionButtonTextActive : null,
+                                ]}
+                              >
+                                {unit[0].toUpperCase() + unit.slice(1)}
+                              </Text>
+                            </HapticButton>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
+                />
+              </View>
+            ) : null}
+
+            <Controller
+              control={control}
+              name="recurrenceReminderLeadDays"
+              rules={{ required: "Choose when you want to be reminded." }}
+              render={({ field: leadField, fieldState }) => (
+                <View style={styles.fieldGroup}>
+                  <RequiredLabel>Remind me to schedule</RequiredLabel>
+                  <View style={styles.recurrenceLeadList}>
+                    {recurrenceLeadOptions.map((option) => {
+                      const isActive = leadField.value === option.value;
+                      return (
+                        <HapticButton
+                          key={option.value}
+                          onPress={() => {
+                            leadField.onChange(option.value);
+                            leadField.onBlur();
+                          }}
+                          style={[
+                            styles.recurrenceLeadButton,
+                            isActive ? styles.recurrenceLeadButtonActive : null,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.recurrencePatternText,
+                              isActive ? styles.recurrencePatternTextActive : null,
+                            ]}
+                          >
+                            {option.label}
+                          </Text>
+                        </HapticButton>
+                      );
+                    })}
+                  </View>
+                  {fieldState.isTouched && fieldState.error ? (
+                    <Text style={styles.errorText}>{fieldState.error.message}</Text>
+                  ) : null}
+                </View>
+              )}
+            />
+          </View>
+        ) : null}
+      </View>
+
       <HapticButton
         disabled={!isValid || isSubmitting}
         onPress={handleSubmit(onSubmitPress)}
@@ -1018,6 +1325,11 @@ function normalizeAppointmentFormData(
         : "",
     providerVisitWindowResponse: formData.providerVisitWindowResponse,
     providerVisitWindowDate: formData.providerVisitWindowDate,
+    recurrenceStatus: formData.recurrenceStatus,
+    recurrencePattern: formData.recurrencePattern,
+    recurrenceIntervalValue: formData.recurrenceIntervalValue.trim(),
+    recurrenceIntervalUnit: formData.recurrenceIntervalUnit,
+    recurrenceReminderLeadDays: formData.recurrenceReminderLeadDays,
   };
 }
 
@@ -1101,6 +1413,86 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 10,
     padding: 14,
+  },
+  recurrenceSection: {
+    borderTopColor: "rgba(31, 53, 87, 0.1)",
+    borderTopWidth: 1,
+    gap: 14,
+    paddingTop: 20,
+  },
+  recurrenceHeader: {
+    gap: 4,
+  },
+  recurrenceEyebrow: {
+    color: colors.secondary,
+    fontFamily: fonts.heading,
+    fontSize: 14,
+    fontWeight: fontWeights.bold,
+    textTransform: "uppercase",
+  },
+  recurrenceDescription: {
+    color: "#536173",
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  recurrenceFields: {
+    backgroundColor: "#eef3f7",
+    borderColor: "rgba(31, 53, 87, 0.1)",
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 16,
+    padding: 14,
+  },
+  recurrencePatternGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  recurrencePatternButton: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderColor: "#d9e1ea",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 46,
+    paddingHorizontal: 10,
+    width: "48.5%",
+  },
+  recurrencePatternButtonActive: {
+    backgroundColor: colors.secondary,
+    borderColor: colors.secondary,
+  },
+  recurrencePatternText: {
+    color: colors.primary,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: fontWeights.semibold,
+    textAlign: "center",
+  },
+  recurrencePatternTextActive: {
+    color: "#ffffff",
+  },
+  customIntervalGroup: {
+    gap: 14,
+  },
+  recurrenceLeadList: {
+    gap: 8,
+  },
+  recurrenceLeadButton: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderColor: "#d9e1ea",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: 12,
+  },
+  recurrenceLeadButtonActive: {
+    backgroundColor: colors.secondary,
+    borderColor: colors.secondary,
   },
   groupLabel: {
     color: "#536173",
